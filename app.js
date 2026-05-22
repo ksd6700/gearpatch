@@ -211,6 +211,7 @@ const LINE_STYLES = {
   solid: { label: "Solid", dash: "" },
   dashed: { label: "Dashed", dash: "10 7" },
   dotted: { label: "Dotted", dash: "2 7" },
+  double: { label: "Double", dash: "", double: true },
 };
 const SIGNAL_TYPES = {
   audio: { label: "Audio", color: "#111111", width: 3, dash: "" },
@@ -583,35 +584,27 @@ function renderEdges() {
     const endpoints = edgeEndpointPoints(edge);
     if (!endpoints) return;
     const { from, to } = endpoints;
-    const d = cablePath(from, to);
+    const d = cablePath(from, to, endpoints.fromSide, endpoints.toSide);
     const style = cableVisualStyle(edge);
     const hit = svgEl("path", {
       d,
       class: "patch-cable-hit",
       "data-edge-id": edge.id,
     });
-    const path = svgEl("path", {
-      d,
-      class: `patch-cable ${state.selectedEdge === edge.id ? "selected" : ""}`,
-      stroke: style.color,
-      "stroke-width": style.width,
-      opacity: state.selectedEdge === edge.id ? "1" : "0.82",
-    });
-    if (style.dash) path.setAttribute("stroke-dasharray", style.dash);
+    const cablePaths = cablePathSvgElements(d, style, state.selectedEdge === edge.id);
     hit.addEventListener("click", () => {
       state.selectedEdge = edge.id;
       state.selected = new Set();
       state.portPopover = null;
       render();
     });
-    dom.edgeLayer.append(hit, path);
+    dom.edgeLayer.append(hit, ...cablePaths);
     terminalBadges.push(
       cableEndChipSvg(from, edge, "from", style.color, state.selectedEdge === edge.id, to),
       cableEndChipSvg(to, edge, "to", style.color, state.selectedEdge === edge.id, from),
     );
   });
   dom.terminalLayer.append(...terminalBadges);
-  resolveTerminalBadgeOverlaps();
   renderPortDragPreview();
 }
 
@@ -860,6 +853,7 @@ function cableVisualStyle(edge) {
     color: edge?.color || legacy.color,
     width: edge?.width || legacy.width,
     dash: line.dash,
+    double: !!line.double,
   };
 }
 
@@ -1362,11 +1356,15 @@ function edgeEndpointPoints(edge) {
   const fromNode = getNode(edge?.from?.nodeId);
   const toNode = getNode(edge?.to?.nodeId);
   if (!fromNode || !toNode) return null;
+  const fromSide = edgeEndpointSide(edge, "from");
+  const toSide = edgeEndpointSide(edge, "to");
   const fromAnchor = nodeAnchorPoint(fromNode, edge.from);
   const toAnchor = nodeAnchorPoint(toNode, edge.to);
   return {
     from: fromAnchor,
     to: toAnchor,
+    fromSide,
+    toSide,
   };
 }
 
@@ -1385,9 +1383,48 @@ function endpointFromPoint(node, point) {
   };
 }
 
-function cablePath(from, to) {
-  const { p0, c1, c2, p3 } = cableControlPoints(from, to);
+function cablePath(from, to, fromSide = "right", toSide = "left") {
+  const { p0, c1, c2, p3 } = cableControlPoints(from, to, fromSide, toSide);
   return `M ${p0.x} ${p0.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${p3.x} ${p3.y}`;
+}
+
+function cablePathSvgElements(d, style, selected = false) {
+  if (style.double) {
+    const rail = svgEl("path", {
+      d,
+      class: `patch-cable double-rail ${selected ? "selected" : ""}`,
+      stroke: style.color,
+      "stroke-width": Math.max(style.width + 5, 7),
+      opacity: selected ? "1" : "0.84",
+    });
+    const gap = svgEl("path", {
+      d,
+      class: "patch-cable double-gap",
+      stroke: "#f8f8f5",
+      "stroke-width": Math.max(style.width + 1.2, 3.2),
+    });
+    return [rail, gap];
+  }
+  const path = svgEl("path", {
+    d,
+    class: `patch-cable ${selected ? "selected" : ""}`,
+    stroke: style.color,
+    "stroke-width": style.width,
+    opacity: selected ? "1" : "0.82",
+  });
+  if (style.dash) path.setAttribute("stroke-dasharray", style.dash);
+  return [path];
+}
+
+function cablePathMarkup(d, style) {
+  const linecap = `stroke-linecap="round" stroke-linejoin="round"`;
+  if (style.double) {
+    const railWidth = Math.max(style.width + 5, 7);
+    const gapWidth = Math.max(style.width + 1.2, 3.2);
+    return `<path d="${d}" fill="none" stroke="${style.color}" stroke-width="${railWidth}" ${linecap}/><path d="${d}" fill="none" stroke="#ffffff" stroke-width="${gapWidth}" ${linecap}/>`;
+  }
+  const dash = style.dash ? ` stroke-dasharray="${style.dash}"` : "";
+  return `<path d="${d}" fill="none" stroke="${style.color}" stroke-width="${style.width}" ${linecap}${dash}/>`;
 }
 
 function renderPortDragPreview() {
@@ -1398,9 +1435,11 @@ function renderPortDragPreview() {
   const targetNode = drag.target ? getNode(drag.target.nodeId) : null;
   const from = nodeAnchorPoint(fromNode, drag.from);
   const to = targetNode && drag.target ? nodeAnchorPoint(targetNode, drag.target) : drag.current;
+  const fromSide = drag.from.side || "right";
+  const toSide = targetNode && drag.target ? drag.target.side || "left" : sideTowardPoint(to, from);
   const style = { color: "#111111", width: 3, dash: LINE_STYLES.dashed.dash };
   const preview = svgEl("path", {
-    d: cablePath(from, to),
+    d: cablePath(from, to, fromSide, toSide),
     class: "patch-cable preview",
     stroke: style.color,
     "stroke-width": style.width,
@@ -1444,6 +1483,7 @@ function cableEndChipSvg(point, edge, endpoint, color, selected = false, otherPo
       x: layout.textX,
       y: layout.textY + (layout.bodyY || 0),
       "text-anchor": layout.textAnchor,
+      "dominant-baseline": "middle",
       ...(layout.textTransform ? { transform: layout.textTransform } : {}),
       ...chipTextFitAttrs(layout, label),
     },
@@ -1456,6 +1496,7 @@ function cableEndChipSvg(point, edge, endpoint, color, selected = false, otherPo
       x: layout.connectorX,
       y: layout.connectorY + (layout.bodyY || 0),
       "text-anchor": layout.connectorAnchor,
+      "dominant-baseline": "middle",
       ...(layout.connectorTransform ? { transform: layout.connectorTransform } : {}),
       ...connectorTextFitAttrs(connector),
     },
@@ -1480,44 +1521,9 @@ function cableEndChipMarkup(point, edge, endpoint, otherPoint = null) {
     <g class="terminal-badge" transform="translate(${layout.x} ${layout.y})">
       <rect y="${layout.bodyY || 0}" width="${layout.width}" height="${layout.height}" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
       <circle cx="${layout.iconX}" cy="${layout.iconY}" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
-      <text x="${layout.textX}" y="${layout.textY + (layout.bodyY || 0)}" text-anchor="${layout.textAnchor}" fill="#111" font-size="10.5" font-weight="820"${labelTransformMarkup}${fitMarkup}>${escapeHtml(label)}</text>
-      <text x="${layout.connectorX}" y="${layout.connectorY + (layout.bodyY || 0)}" text-anchor="${layout.connectorAnchor}" fill="#6e6e72" font-size="12.5" font-weight="760"${connectorTransformMarkup}${connectorFitMarkup}>${escapeHtml(connector)}</text>
+      <text x="${layout.textX}" y="${layout.textY + (layout.bodyY || 0)}" text-anchor="${layout.textAnchor}" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820"${labelTransformMarkup}${fitMarkup}>${escapeHtml(label)}</text>
+      <text x="${layout.connectorX}" y="${layout.connectorY + (layout.bodyY || 0)}" text-anchor="${layout.connectorAnchor}" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760"${connectorTransformMarkup}${connectorFitMarkup}>${escapeHtml(connector)}</text>
     </g>`;
-}
-
-function resolveTerminalBadgeOverlaps() {
-  const isHorizontal = (badge) => badge.classList.contains("left") || badge.classList.contains("right");
-  for (let pass = 0; pass < 10; pass += 1) {
-    const badges = $$(".terminal-badge")
-      .filter(isHorizontal)
-      .map((badge) => ({ badge, rect: badge.querySelector(".terminal-badge-bg")?.getBoundingClientRect() }))
-      .filter((item) => item.rect);
-    let fixed = false;
-    for (let i = 0; i < badges.length && !fixed; i += 1) {
-      for (let j = i + 1; j < badges.length; j += 1) {
-        if (!rectsOverlap(badges[i].rect, badges[j].rect)) continue;
-        const aCenter = (badges[i].rect.top + badges[i].rect.bottom) / 2;
-        const bCenter = (badges[j].rect.top + badges[j].rect.bottom) / 2;
-        shiftTerminalBadgeBody(badges[i].badge, aCenter <= bCenter ? -7 : 7);
-        shiftTerminalBadgeBody(badges[j].badge, aCenter <= bCenter ? 7 : -7);
-        fixed = true;
-        break;
-      }
-    }
-    if (!fixed) return;
-  }
-}
-
-function rectsOverlap(a, b) {
-  return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
-}
-
-function shiftTerminalBadgeBody(badge, dy) {
-  [".terminal-badge-bg", ".terminal-badge-label", ".terminal-badge-connector"].forEach((selector) => {
-    const item = badge.querySelector(selector);
-    if (!item || item.hasAttribute("transform")) return;
-    item.setAttribute("y", Number(item.getAttribute("y") || 0) + dy);
-  });
 }
 
 function cableEndChipLayout(point, side = "right", label = "", connector = "", otherPoint = null, connectorSide = "") {
@@ -1527,20 +1533,21 @@ function cableEndChipLayout(point, side = "right", label = "", connector = "", o
   const height = 28;
   const iconR = 8;
   const connectorGap = 14;
+  const textCenterY = height / 2 + 1.2;
   if (side === "left") {
     return {
       x: point.x - width + iconR,
       y: point.y - height / 2,
       width,
       height,
-      bodyY: 28,
+      bodyY: 0,
       iconX: width - iconR,
       iconY: height / 2,
       textX: width - iconR * 2 - 7,
-      textY: 17.5,
+      textY: textCenterY,
       textAnchor: "end",
       connectorX: -connectorGap,
-      connectorY: 17.5,
+      connectorY: textCenterY,
       connectorAnchor: "end",
     };
   }
@@ -1549,14 +1556,14 @@ function cableEndChipLayout(point, side = "right", label = "", connector = "", o
     y: point.y - height / 2,
     width,
     height,
-    bodyY: -28,
+    bodyY: 0,
     iconX: iconR,
     iconY: height / 2,
     textX: iconR * 2 + 7,
-    textY: 17.5,
+    textY: textCenterY,
     textAnchor: "start",
     connectorX: width + connectorGap,
-    connectorY: 17.5,
+    connectorY: textCenterY,
     connectorAnchor: "start",
   };
 }
@@ -1570,9 +1577,9 @@ function verticalCableEndChipLayout(point, side, label = "", connector = "", oth
   const connectorOnLeft = connectorSide ? connectorSide === "left" : cableHeadsRight;
   const connectorX = connectorOnLeft ? -14 : width + 14;
   const connectorAnchor = "middle";
-  const connectorY = height / 2;
   if (side === "top") {
     const textY = (height - iconR * 2) / 2;
+    const connectorY = textY;
     return {
       x: point.x - width / 2,
       y: point.y - height + iconR,
@@ -1592,6 +1599,7 @@ function verticalCableEndChipLayout(point, side, label = "", connector = "", oth
     };
   }
   const textY = (height + iconR * 2) / 2;
+  const connectorY = textY;
   return {
     x: point.x - width / 2,
     y: point.y - iconR,
@@ -1714,12 +1722,29 @@ function connectorTerminalShape(kind, color, gender = "") {
   ];
 }
 
-function cableControlPoints(from, to) {
-  const dx = Math.max(90, Math.abs(to.x - from.x) * 0.45);
+function sideNormal(side = "right") {
+  if (side === "left") return { x: -1, y: 0 };
+  if (side === "top") return { x: 0, y: -1 };
+  if (side === "bottom") return { x: 0, y: 1 };
+  return { x: 1, y: 0 };
+}
+
+function sideTowardPoint(origin, target) {
+  const dx = target.x - origin.x;
+  const dy = target.y - origin.y;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx < 0 ? "left" : "right";
+  return dy < 0 ? "top" : "bottom";
+}
+
+function cableControlPoints(from, to, fromSide = "right", toSide = "left") {
+  const span = Math.hypot(to.x - from.x, to.y - from.y);
+  const handle = Math.min(220, Math.max(76, span * 0.34));
+  const fromNormal = sideNormal(fromSide);
+  const toNormal = sideNormal(toSide);
   return {
     p0: from,
-    c1: { x: from.x + (to.x >= from.x ? dx : -dx), y: from.y },
-    c2: { x: to.x - (to.x >= from.x ? dx : -dx), y: to.y },
+    c1: { x: from.x + fromNormal.x * handle, y: from.y + fromNormal.y * handle },
+    c2: { x: to.x + toNormal.x * handle, y: to.y + toNormal.y * handle },
     p3: to,
   };
 }
@@ -1741,7 +1766,7 @@ function nearestEdgeToPoint(point) {
   state.edges.forEach((edge) => {
     const endpoints = edgeEndpointPoints(edge);
     if (!endpoints) return;
-    const controls = cableControlPoints(endpoints.from, endpoints.to);
+    const controls = cableControlPoints(endpoints.from, endpoints.to, endpoints.fromSide, endpoints.toSide);
     for (let i = 0; i <= 32; i += 1) {
       const sample = cubicPoint(controls, i / 32);
       const d = distance(point, sample);
@@ -1886,8 +1911,7 @@ function buildExportSvg() {
       const endpoints = edgeEndpointPoints(edge);
       if (!endpoints) return "";
       const style = cableVisualStyle(edge);
-      const dash = style.dash ? ` stroke-dasharray="${style.dash}"` : "";
-      return `<path d="${cablePath(endpoints.from, endpoints.to)}" fill="none" stroke="${style.color}" stroke-width="${style.width}" stroke-linecap="round"${dash}/>`;
+      return cablePathMarkup(cablePath(endpoints.from, endpoints.to, endpoints.fromSide, endpoints.toSide), style);
     })
     .join("");
   const terminalMarkup = state.edges

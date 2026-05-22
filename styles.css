@@ -611,6 +611,11 @@ input[type="color"] {
   filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.28));
 }
 
+.patch-cable.double-gap {
+  filter: none;
+  opacity: 1;
+}
+
 .patch-cable.preview {
   opacity: 0.72;
   stroke-dasharray: 7 7;
