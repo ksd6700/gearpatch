@@ -5,6 +5,10 @@ const WORLD_W = 5000;
 const WORLD_H = 3500;
 const GRID_SIZE = 24;
 const HANDLE_SIDES = ["left", "right", "top", "bottom"];
+const TERMINAL_MIN_SPACING = {
+  horizontal: 46,
+  vertical: 54,
+};
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -1222,14 +1226,30 @@ function clampOffset(value) {
 }
 
 function autoPlaceConnectedPortsForNodeIds(nodeIds) {
-  const ids = new Set(nodeIds);
+  const ids = connectedNodeIdSet(nodeIds);
   const edges = state.edges.filter((edge) => ids.has(edge.from.nodeId) || ids.has(edge.to.nodeId));
   autoPlacePortsForEdges(edges);
 }
 
 function autoPlaceEdgeAnchors(edge) {
   if (!edge) return;
-  autoPlacePortsForEdges([edge]);
+  autoPlaceConnectedPortsForNodeIds([edge.from.nodeId, edge.to.nodeId]);
+}
+
+function connectedNodeIdSet(nodeIds) {
+  const ids = new Set(nodeIds.filter(Boolean));
+  let expanded = true;
+  while (expanded) {
+    expanded = false;
+    state.edges.forEach((edge) => {
+      if (!ids.has(edge.from.nodeId) && !ids.has(edge.to.nodeId)) return;
+      const before = ids.size;
+      ids.add(edge.from.nodeId);
+      ids.add(edge.to.nodeId);
+      expanded = ids.size !== before;
+    });
+  }
+  return ids;
 }
 
 function autoPlacePortsForEdges(edges = state.edges) {
@@ -1249,7 +1269,8 @@ function autoPlacePortsForEdges(edges = state.edges) {
   groups.forEach((items) => {
     items.sort((a, b) => a.sortValue - b.sortValue || a.tieBreak.localeCompare(b.tieBreak));
     const count = items.length;
-    const spread = count <= 1 ? 0 : Math.min(0.8, 0.42 * (count - 1));
+    const minStep = endpointPlacementMinStep(items[0]);
+    const spread = count <= 1 ? 0 : Math.min(0.8, Math.max(0.42 * (count - 1), minStep * (count - 1)));
     const start = 0.5 - spread / 2;
     const step = count <= 1 ? 0 : spread / (count - 1);
     items.forEach((item, index) => {
@@ -1263,6 +1284,15 @@ function autoPlacePortsForEdges(edges = state.edges) {
       };
     });
   });
+}
+
+function endpointPlacementMinStep(item) {
+  if (!item?.node) return 0.42;
+  const horizontalSide = item.side === "left" || item.side === "right";
+  const axisSize = horizontalSide ? item.node.h : item.node.w;
+  const minPx = horizontalSide ? TERMINAL_MIN_SPACING.horizontal : TERMINAL_MIN_SPACING.vertical;
+  if (!axisSize) return 0.42;
+  return Math.min(0.8, minPx / axisSize);
 }
 
 function addEndpointPlacement(groups, edge, endpoint, node, side, targetCenter) {
