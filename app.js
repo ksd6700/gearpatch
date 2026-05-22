@@ -14,7 +14,7 @@ const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
 const state = {
-  name: "ライブPA",
+  name: "Live PA",
   notes: "",
   nodes: [],
   edges: [],
@@ -31,165 +31,140 @@ const state = {
   pan: null,
   resize: null,
   clipboard: null,
+  pendingNewConfirmed: false,
 };
 
+const LIBRARY_GROUPS = [
+  { id: "instruments", label: "Instruments & Players", jaLabel: "楽器＆プレイヤー" },
+  { id: "controllers", label: "Controllers & System", jaLabel: "コントローラー＆システム" },
+  { id: "interfaces", label: "Audio Interfaces & Mixers", jaLabel: "オーディオインターフェース＆ミキサー" },
+  { id: "effects", label: "Effects", jaLabel: "エフェクター" },
+  { id: "amps", label: "Amps & Speakers", jaLabel: "アンプ＆スピーカー" },
+];
+
+function libraryGroup(groupId) {
+  return LIBRARY_GROUPS.find((group) => group.id === groupId);
+}
+
+function libraryGroupLabel(groupId) {
+  return libraryGroup(groupId)?.label || "Gear";
+}
+
+function templateEntry({
+  type,
+  label,
+  jaLabel,
+  group,
+  icon,
+  defaultName = label,
+  defaultLabel = label,
+  tags = [],
+  w = 180,
+  h = 112,
+  ports = [],
+  hidden = false,
+}) {
+  return {
+    type,
+    label,
+    jaLabel,
+    defaultName,
+    defaultLabel,
+    title: defaultName,
+    subtitle: defaultLabel,
+    category: libraryGroupLabel(group),
+    group,
+    icon,
+    w,
+    h,
+    tags,
+    ports,
+    hidden,
+  };
+}
+
 const templates = [
-  {
-    type: "vocal",
-    title: "Vocal Mic",
-    subtitle: "Lead vocal",
-    category: "Mic",
-    icon: "mic",
-    w: 168,
-    h: 104,
-    tags: ["XLR", "Mic"],
-    ports: [{ id: "xlr-out", label: "XLR OUT", kind: "xlr-m", side: "right", offset: 0.52 }],
-  },
-  {
-    type: "di",
-    title: "DI Box",
-    subtitle: "Active DI",
-    category: "Utility",
-    icon: "box",
-    w: 160,
-    h: 112,
-    tags: ["DI", "PAD"],
-    ports: [
-      { id: "inst-in", label: "TS IN", kind: "ts", side: "left", offset: 0.36 },
-      { id: "link-out", label: "LINK", kind: "ts", side: "left", offset: 0.66 },
-      { id: "xlr-out", label: "XLR OUT", kind: "xlr-m", side: "right", offset: 0.5 },
-    ],
-  },
-  {
-    type: "mixer",
-    title: "FOH Mixer",
-    subtitle: "House console",
-    category: "PA",
-    icon: "mixer",
-    w: 214,
-    h: 154,
-    tags: ["FOH", "Inputs"],
-    ports: [
-      { id: "ch1", label: "CH 1", kind: "xlr-f", side: "left", offset: 0.18 },
-      { id: "ch2", label: "CH 2", kind: "xlr-f", side: "left", offset: 0.34 },
-      { id: "ch3", label: "CH 3", kind: "trs", side: "left", offset: 0.5 },
-      { id: "main-l", label: "MAIN L", kind: "xlr-m", side: "right", offset: 0.36 },
-      { id: "main-r", label: "MAIN R", kind: "xlr-m", side: "right", offset: 0.58 },
-    ],
-  },
-  {
-    type: "stagebox",
-    title: "Stagebox",
-    subtitle: "Venue input box",
-    category: "PA",
-    icon: "rack",
-    w: 198,
-    h: 148,
-    tags: ["Stage", "Snake"],
-    ports: [
-      { id: "in1", label: "IN 1", kind: "xlr-f", side: "left", offset: 0.18 },
-      { id: "in2", label: "IN 2", kind: "xlr-f", side: "left", offset: 0.34 },
-      { id: "in3", label: "IN 3", kind: "xlr-f", side: "left", offset: 0.5 },
-      { id: "in4", label: "IN 4", kind: "xlr-f", side: "left", offset: 0.66 },
-      { id: "returns", label: "RETURN", kind: "trs", side: "right", offset: 0.45 },
-    ],
-  },
-  {
-    type: "synth",
-    title: "Synth",
-    subtitle: "Stereo keys",
-    category: "Instrument",
-    icon: "keys",
-    w: 188,
-    h: 116,
-    tags: ["L/R", "TRS"],
-    ports: [
-      { id: "out-l", label: "TRS OUT L", kind: "trs", side: "right", offset: 0.36 },
-      { id: "out-r", label: "TRS OUT R", kind: "trs", side: "right", offset: 0.62 },
-      { id: "midi-in", label: "MIDI IN", kind: "midi", side: "left", offset: 0.5 },
-    ],
-  },
-  {
-    type: "dj",
-    title: "DJ Mixer",
-    subtitle: "Club setup",
-    category: "DJ",
-    icon: "turntable",
-    w: 206,
-    h: 132,
-    tags: ["RCA", "XLR"],
-    ports: [
-      { id: "rca-l", label: "RCA L", kind: "rca", side: "right", offset: 0.34 },
-      { id: "rca-r", label: "RCA R", kind: "rca", side: "right", offset: 0.52 },
-      { id: "xlr-l", label: "XLR L", kind: "xlr-m", side: "right", offset: 0.7 },
-      { id: "usb", label: "USB-B", kind: "usb", side: "left", offset: 0.5 },
-    ],
-  },
-  {
-    type: "interface",
-    title: "Audio Interface",
-    subtitle: "Playback rig",
-    category: "Studio",
-    icon: "interface",
-    w: 198,
-    h: 126,
-    tags: ["USB-C", "TRS"],
-    ports: [
-      { id: "usb-c", label: "USB-C", kind: "usb-c", side: "left", offset: 0.5 },
-      { id: "out1", label: "OUT 1", kind: "trs", side: "right", offset: 0.36 },
-      { id: "out2", label: "OUT 2", kind: "trs", side: "right", offset: 0.62 },
-    ],
-  },
-  {
-    type: "monitor",
-    title: "Monitor Wedge",
-    subtitle: "Mix 1",
-    category: "Monitor",
-    icon: "speaker",
-    w: 168,
-    h: 108,
-    tags: ["Return", "XLR"],
-    ports: [{ id: "input", label: "XLR IN", kind: "xlr-f", side: "left", offset: 0.52 }],
-  },
-  {
-    type: "amp",
-    title: "Guitar Amp",
-    subtitle: "Mic or line",
-    category: "Backline",
-    icon: "amp",
-    w: 178,
-    h: 122,
-    tags: ["Amp", "Mic"],
-    ports: [
-      { id: "inst-in", label: "TS IN", kind: "ts", side: "left", offset: 0.42 },
-      { id: "speaker", label: "SPK", kind: "speakon", side: "right", offset: 0.58 },
-    ],
-  },
+  templateEntry({ type: "microphone", label: "Microphone", jaLabel: "マイク", group: "instruments", icon: "mic", defaultName: "Vocal Mic", defaultLabel: "Microphone", tags: ["XLR", "Vocal"], w: 168, h: 104 }),
+  templateEntry({ type: "synthesizer", label: "Synthesizer", jaLabel: "シンセサイザー", group: "instruments", icon: "synthesizer", defaultName: "Synthesizer", defaultLabel: "Synth", tags: ["L/R", "MIDI"], w: 188, h: 116 }),
+  templateEntry({ type: "keyboard", label: "Keyboard", jaLabel: "キーボード", group: "instruments", icon: "keyboard", defaultName: "Keyboard", defaultLabel: "Keys", tags: ["Keys", "L/R"], w: 188, h: 116 }),
+  templateEntry({ type: "drum-machine", label: "Drum Machine / Sampler / Sequencer", jaLabel: "ドラムマシーン / サンプラー / シーケンサー", group: "instruments", icon: "drumMachine", defaultName: "Drum Machine", defaultLabel: "Beats", tags: ["Pads", "MIDI"], w: 222, h: 124 }),
+  templateEntry({ type: "guitar", label: "Guitar", jaLabel: "ギター", group: "instruments", icon: "guitar", defaultName: "Guitar", defaultLabel: "Guitar", tags: ["Instrument", "TS"], w: 168, h: 108 }),
+  templateEntry({ type: "bass", label: "Bass", jaLabel: "ベース", group: "instruments", icon: "bass", defaultName: "Bass", defaultLabel: "Bass", tags: ["Instrument", "TS"], w: 168, h: 108 }),
+  templateEntry({ type: "turntable", label: "Turntable", jaLabel: "ターンテーブル", group: "instruments", icon: "turntable", defaultName: "Turntable", defaultLabel: "DJ Gear", tags: ["RCA", "DJ"], w: 186, h: 118 }),
+  templateEntry({ type: "cdj", label: "CDJ", jaLabel: "CDJ", group: "instruments", icon: "cdj", defaultName: "CDJ", defaultLabel: "DJ Gear", tags: ["RCA", "Digital"], w: 178, h: 116 }),
+  templateEntry({ type: "laptop", label: "Laptop PC", jaLabel: "パソコン", group: "controllers", icon: "laptop", defaultName: "Laptop PC", defaultLabel: "Host", tags: ["USB", "Playback"], w: 188, h: 112 }),
+  templateEntry({ type: "midi-controller", label: "MIDI Controller", jaLabel: "MIDIコントローラー", group: "controllers", icon: "midiController", defaultName: "MIDI Controller", defaultLabel: "Controller", tags: ["MIDI", "USB"], w: 204, h: 116 }),
+  templateEntry({ type: "audio-interface", label: "Audio Interface", jaLabel: "オーディオインターフェース", group: "interfaces", icon: "interface", defaultName: "Audio Interface", defaultLabel: "Audio I/O", tags: ["USB-C", "TRS"], w: 198, h: 126 }),
+  templateEntry({ type: "mixer", label: "Mixer", jaLabel: "ミキサー", group: "interfaces", icon: "mixer", defaultName: "Sub Mixer", defaultLabel: "Mixer", tags: ["FOH", "Inputs"], w: 214, h: 154 }),
+  templateEntry({ type: "effector", label: "Effector", jaLabel: "エフェクター", group: "effects", icon: "effector", defaultName: "Effector", defaultLabel: "FX", tags: ["FX", "TS"], w: 160, h: 108 }),
+  templateEntry({ type: "pedalboard", label: "Effects Pedal / Pedalboard", jaLabel: "エフェクター / ペダルボード", group: "effects", icon: "pedalboard", defaultName: "Pedalboard", defaultLabel: "FX Pedal", tags: ["Pedals", "FX"], w: 214, h: 120 }),
+  templateEntry({ type: "guitar-amplifier", label: "Guitar Amplifier", jaLabel: "ギターアンプ", group: "amps", icon: "guitarAmp", defaultName: "Guitar Amp", defaultLabel: "Amp", tags: ["Amp", "Mic"], w: 178, h: 122 }),
+  templateEntry({ type: "bass-amplifier", label: "Bass Amplifier", jaLabel: "ベースアンプ", group: "amps", icon: "bassAmp", defaultName: "Bass Amp", defaultLabel: "Amp", tags: ["Bass", "DI"], w: 186, h: 126 }),
+  templateEntry({ type: "amplifier", label: "Amplifier", jaLabel: "アンプ", group: "amps", icon: "powerAmp", defaultName: "Amplifier", defaultLabel: "Power Amp", tags: ["Amp", "Speaker"], w: 180, h: 112 }),
+  templateEntry({ type: "speaker", label: "Speaker", jaLabel: "スピーカー", group: "amps", icon: "speakerCab", defaultName: "Main Speaker", defaultLabel: "Speaker", tags: ["Output", "Monitor"], w: 168, h: 118 }),
+  templateEntry({ type: "combo-amplifier", label: "Combo Amplifier", jaLabel: "アンプスピーカー（コンボアンプ）", group: "amps", icon: "comboAmp", defaultName: "Combo Amp", defaultLabel: "Combo Amp", tags: ["Amp", "Speaker"], w: 188, h: 126 }),
+  templateEntry({ type: "di-box", label: "DI Box", jaLabel: "DI", group: "interfaces", icon: "box", tags: ["DI", "PAD"], w: 160, h: 112, hidden: true }),
+  templateEntry({ type: "stagebox", label: "Stagebox", jaLabel: "ステージボックス", group: "interfaces", icon: "rack", tags: ["Stage", "Snake"], w: 198, h: 148, hidden: true }),
 ];
 
 const strokeIcon = (body, extra = "") =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${extra}>${body}</svg>`;
 
+const guitarIconBody = `<path d="M15 4l5 5"/><path d="M14 5l5 5"/><path d="M12 9l4 -4"/><path d="M7.5 12.5c-2.4 .2-4.5 2.2-4.5 4.6a3.9 3.9 0 0 0 4 3.9c2.4 0 4.3-1.8 4.6-4.1"/><path d="M9.8 14.2c1.4 .2 2.9-.1 4-1.2l4.2-4.2"/><circle cx="7" cy="17" r="1.2"/>`;
+const discIconBody = `<path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M7 12a5 5 0 0 1 5 -5" /><path d="M12 17a5 5 0 0 0 5 -5" />`;
+const deviceSpeakerIconBody = `<path d="M5 5a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2l0 -14" /><path d="M9 14a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /><path d="M12 7l0 .01" />`;
+const volumeIconBody = `<path d="M15 8a5 5 0 0 1 0 8" /><path d="M17.7 5a9 9 0 0 1 0 14" /><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5" />`;
+
 const iconSvg = {
-  mic: strokeIcon(`<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/><path d="M8 22h8"/>`),
-  box: strokeIcon(`<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>`),
-  mixer: strokeIcon(`<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7v10"/><path d="M12 7v10"/><path d="M16 7v10"/><path d="M7 11h2"/><path d="M11 15h2"/><path d="M15 9h2"/>`),
+  mic: strokeIcon(`<path d="M9 5a3 3 0 0 1 3 -3a3 3 0 0 1 3 3v5a3 3 0 0 1 -3 3a3 3 0 0 1 -3 -3l0 -5" /><path d="M5 10a7 7 0 0 0 14 0" /><path d="M8 21l8 0" /><path d="M12 17l0 4" />`),
+  box: strokeIcon(`<path d="M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12l0 9" /><path d="M12 12l-8 -4.5" />`),
+  mixer: strokeIcon(`<path d="M4 10a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M6 4v4" /><path d="M6 12v8" /><path d="M10 16a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M12 4v10" /><path d="M12 18v2" /><path d="M16 7a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M18 4v1" /><path d="M18 9v11" />`),
   rack: strokeIcon(`<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01"/><path d="M7 16.5h.01"/><path d="M11 7.5h6"/><path d="M11 16.5h6"/>`),
-  keys: strokeIcon(`<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 6v12"/><path d="M11 6v12"/><path d="M15 6v12"/><path d="M19 6v12"/><path d="M5 12h14"/><path d="M9 6v6"/><path d="M13 6v6"/><path d="M17 6v6"/>`),
-  turntable: strokeIcon(`<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="12" r="4"/><circle cx="9" cy="12" r="1"/><path d="M16 8h2"/><path d="M16 12h2"/><path d="M16 16h2"/>`),
-  interface: strokeIcon(`<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8" cy="12" r="2.5"/><path d="M13 10h5"/><path d="M13 14h5"/><path d="M6 18v2"/><path d="M18 18v2"/>`),
-  speaker: strokeIcon(`<path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>`),
+  keys: strokeIcon(`<path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10" /><path d="M9 19v-6" /><path d="M8 5v8h2v-8" /><path d="M15 19v-6" /><path d="M14 5v8h2v-8" />`),
+  synthesizer: strokeIcon(`<path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M4 6l8 0" /><path d="M16 6l4 0" /><path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M4 12l2 0" /><path d="M10 12l10 0" /><path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M4 18l11 0" /><path d="M19 18l1 0" />`),
+  keyboard: strokeIcon(`<path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10" /><path d="M9 19v-6" /><path d="M8 5v8h2v-8" /><path d="M15 19v-6" /><path d="M14 5v8h2v-8" />`),
+  drumMachine: strokeIcon(`<path d="M4 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /><path d="M4 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /><path d="M14 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /><path d="M14 7l6 0" /><path d="M17 4l0 6" />`),
+  guitar: strokeIcon(guitarIconBody),
+  bass: strokeIcon(guitarIconBody),
+  turntable: strokeIcon(discIconBody),
+  cdj: strokeIcon(discIconBody),
+  laptop: strokeIcon(`<path d="M3 19l18 0" /><path d="M5 7a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v8a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1l0 -8" />`),
+  midiController: strokeIcon(`<path d="M2 8a2 2 0 0 1 2 -2h16a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2l0 -8" /><path d="M6 10l0 .01" /><path d="M10 10l0 .01" /><path d="M14 10l0 .01" /><path d="M18 10l0 .01" /><path d="M6 14l0 .01" /><path d="M18 14l0 .01" /><path d="M10 14l4 .01" />`),
+  interface: strokeIcon(`<path d="M3 7a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v2a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3" /><path d="M3 15a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v2a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3l0 -2" /><path d="M7 8l0 .01" /><path d="M7 16l0 .01" />`),
+  speaker: strokeIcon(volumeIconBody),
   amp: strokeIcon(`<rect x="4" y="6" width="16" height="12" rx="2"/><path d="M7 10h10"/><path d="M7 14h2"/><path d="M12 14h2"/><path d="M17 14h.01"/><path d="M6 18v2"/><path d="M18 18v2"/>`),
+  effector: strokeIcon(`<path d="M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12l0 9" /><path d="M12 12l-8 -4.5" />`),
+  pedalboard: strokeIcon(`<path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M2 12a6 6 0 0 1 6 -6h8a6 6 0 0 1 6 6a6 6 0 0 1 -6 6h-8a6 6 0 0 1 -6 -6" />`),
+  guitarAmp: strokeIcon(deviceSpeakerIconBody),
+  bassAmp: strokeIcon(deviceSpeakerIconBody),
+  powerAmp: strokeIcon(`<path d="M5 6a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1l0 -12" /><path d="M9 9h6v6h-6l0 -6" /><path d="M3 10h2" /><path d="M3 14h2" /><path d="M10 3v2" /><path d="M14 3v2" /><path d="M21 10h-2" /><path d="M21 14h-2" /><path d="M14 21v-2" /><path d="M10 21v-2" />`),
+  speakerCab: strokeIcon(volumeIconBody),
+  comboAmp: strokeIcon(`<path d="M4 6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2l0 -12" /><path d="M14 6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2l0 -6" />`),
 };
 
 const ICON_OPTIONS = [
-  { id: "mic", label: "Mic" },
-  { id: "box", label: "DI / Box" },
+  { id: "mic", label: "Microphone" },
+  { id: "synthesizer", label: "Synthesizer" },
+  { id: "keyboard", label: "Keyboard" },
+  { id: "drumMachine", label: "Drum Machine" },
+  { id: "guitar", label: "Guitar" },
+  { id: "bass", label: "Bass" },
+  { id: "turntable", label: "Turntable" },
+  { id: "cdj", label: "CDJ" },
+  { id: "laptop", label: "Laptop PC" },
+  { id: "midiController", label: "MIDI Controller" },
+  { id: "interface", label: "Audio Interface" },
   { id: "mixer", label: "Mixer" },
+  { id: "effector", label: "Effector" },
+  { id: "pedalboard", label: "Pedalboard" },
+  { id: "guitarAmp", label: "Guitar Amplifier" },
+  { id: "bassAmp", label: "Bass Amplifier" },
+  { id: "powerAmp", label: "Amplifier" },
+  { id: "speakerCab", label: "Speaker" },
+  { id: "comboAmp", label: "Combo Amplifier" },
+  { id: "box", label: "DI / Box" },
   { id: "rack", label: "Stagebox" },
   { id: "keys", label: "Keys" },
-  { id: "turntable", label: "DJ" },
-  { id: "interface", label: "Interface" },
   { id: "speaker", label: "Monitor" },
   { id: "amp", label: "Amp" },
 ];
@@ -208,14 +183,26 @@ const portSvg = {
   midi: strokeIcon(`<path d="M5 13a7 7 0 0 1 14 0v4H5Z"/><path d="M8 13h.01"/><path d="M12 10h.01"/><path d="M16 13h.01"/><path d="M10 17v-2"/><path d="M14 17v-2"/>`),
 };
 
-const PORT_KIND_OPTIONS = ["xlr-m", "xlr-f", "ts", "trs", "trrs", "rca", "usb", "usb-c", "hdmi", "speakon", "midi"];
-const CONNECTOR_SHAPE_OPTIONS = ["xlr", "ts", "trs", "trrs", "rca", "usb", "usb-c", "hdmi", "speakon", "midi"];
+const CONNECTOR_SHAPE_GROUPS = [
+  { label: "Audio", options: ["xlr", "ts", "trs", "mini-ts", "mini-trs", "mini-trrs", "rca"] },
+  { label: "Digital", options: ["usb-c", "usb-a", "usb-b", "micro-usb", "lan", "hdmi"] },
+  { label: "Speaker", options: ["speakon"] },
+  { label: "Control", options: ["midi"] },
+];
+const CONNECTOR_SHAPE_OPTIONS = CONNECTOR_SHAPE_GROUPS.flatMap((group) => group.options);
+const PORT_KIND_OPTIONS = ["xlr-m", "xlr-f", ...CONNECTOR_SHAPE_OPTIONS];
 const CABLE_COLORS = ["#111111", "#d92d20", "#2563eb", "#16a34a", "#f59e0b", "#7c3aed", "#0f766e", "#e11d48"];
 const LINE_STYLES = {
   solid: { label: "Solid", dash: "" },
   dashed: { label: "Dashed", dash: "10 7" },
   dotted: { label: "Dotted", dash: "2 7" },
   double: { label: "Double", dash: "", double: true },
+};
+const SIGNAL_DIRECTIONS = {
+  forward: { label: "From → To" },
+  reverse: { label: "To → From" },
+  both: { label: "Both" },
+  none: { label: "None" },
 };
 const SIGNAL_TYPES = {
   audio: { label: "Audio", color: "#111111", width: 3, dash: "" },
@@ -239,9 +226,8 @@ const dom = {
   fileInput: $("#fileInput"),
   toastStack: $("#toastStack"),
   startDialog: $("#startDialog"),
-  menuBtn: $("#menuBtn"),
-  appMenu: $("#appMenu"),
   documentDialog: $("#documentDialog"),
+  inputListDialog: $("#inputListDialog"),
   historyDialog: $("#historyDialog"),
   historyList: $("#historyList"),
   selectionCount: $("#selectionCount"),
@@ -253,6 +239,7 @@ const dom = {
   edgeInspector: $("#edgeInspector"),
   edgeSummary: $("#edgeSummary"),
   edgeSignalTypes: $("#edgeSignalTypes"),
+  edgeDirectionTypes: $("#edgeDirectionTypes"),
   edgeEndpointEditor: $("#edgeEndpointEditor"),
   edgeColorInput: $("#edgeColorInput"),
   edgeColorSwatches: $("#edgeColorSwatches"),
@@ -306,7 +293,7 @@ function snapshot() {
 }
 
 function restoreSnapshot(snap) {
-  state.name = snap.name || "ライブPA";
+  state.name = snap.name || "Live PA";
   state.notes = snap.notes || snap.metadata?.notes || "";
   state.nodes = clone(snap.nodes || []);
   state.edges = clone(snap.edges || []);
@@ -320,7 +307,7 @@ function restoreSnapshot(snap) {
   dom.projectNameInput.value = state.name;
   dom.notesInput.value = state.notes;
   render();
-  scheduleAutosave("復元しました");
+  scheduleAutosave("Restored");
 }
 
 function pushHistory() {
@@ -329,7 +316,7 @@ function pushHistory() {
   state.future = [];
 }
 
-function commit(message = "更新しました") {
+function commit(message = "Updated") {
   pushHistory();
   render();
   scheduleAutosave(message);
@@ -383,19 +370,19 @@ function updateStorageMeter() {
   const percent = Math.min(100, (bytes / (4 * 1024 * 1024)) * 100);
   dom.storageLabel.textContent = `${Math.round(kb)} KB`;
   dom.storageBar.style.width = `${percent}%`;
-  if (bytes > 4 * 1024 * 1024) toast("localStorageが4MBを超えました。JSON保存をおすすめします。");
+  if (bytes > 4 * 1024 * 1024) toast("localStorage is over 4 MB. Export a JSON backup soon.");
 }
 
 function makeNode(template, x = 1200, y = 900) {
-  const ports = template.ports.map((port) => ({ ...port, id: uid(port.id) }));
+  const ports = (template.ports || []).map((port) => ({ ...port, id: uid(port.id) }));
   return {
     id: uid("node"),
     type: template.type,
-    title: template.title,
-    subtitle: template.subtitle,
-    category: template.category,
+    title: template.defaultName ?? template.title ?? "",
+    subtitle: template.defaultLabel ?? template.subtitle ?? template.label ?? "Gear",
+    category: template.category || libraryGroupLabel(template.group),
     icon: template.icon,
-    tags: [...template.tags],
+    tags: [...(template.tags || [])],
     x: snapToGrid(x),
     y: snapToGrid(y),
     w: template.w,
@@ -405,11 +392,12 @@ function makeNode(template, x = 1200, y = 900) {
 }
 
 function addNode(template, point) {
+  if (!template) return;
   const snapped = snapPoint(point);
   state.nodes.push(makeNode(template, snapped.x, snapped.y));
   state.selected = new Set([state.nodes.at(-1).id]);
   state.selectedEdge = null;
-  commit(`${template.title}を追加`);
+  commit(`Added ${template.label || template.title || "gear"}`);
 }
 
 function snapToGrid(value) {
@@ -481,9 +469,16 @@ function clearSelection() {
 function renderLibrary() {
   const query = dom.librarySearch.value.trim().toLowerCase();
   dom.libraryList.innerHTML = "";
-  templates
-    .filter((item) => `${item.title} ${item.subtitle} ${item.category}`.toLowerCase().includes(query))
-    .forEach((template) => {
+  const visibleTemplates = templates.filter((item) => !item.hidden);
+  const filteredTemplates = visibleTemplates.filter((item) => librarySearchText(item).includes(query));
+
+  LIBRARY_GROUPS.forEach((group) => {
+    const groupItems = filteredTemplates.filter((item) => item.group === group.id);
+    if (!groupItems.length) return;
+    const section = document.createElement("section");
+    section.className = "library-group";
+    section.innerHTML = `<h3 class="library-group-title">${escapeHtml(group.label)}</h3>`;
+    groupItems.forEach((template) => {
       const item = document.createElement("button");
       item.className = "library-item";
       item.draggable = true;
@@ -491,8 +486,8 @@ function renderLibrary() {
       item.innerHTML = `
         <span class="library-icon">${iconSvg[template.icon]}</span>
         <span>
-          <strong>${escapeHtml(template.title)}</strong>
-          <span>${escapeHtml(template.category)} · ${template.tags.join(" / ")}</span>
+          <strong>${escapeHtml(template.label)}</strong>
+          <span>${escapeHtml(template.jaLabel)}</span>
         </span>
       `;
       item.addEventListener("dragstart", (event) => {
@@ -506,8 +501,68 @@ function renderLibrary() {
         );
         addNode(template, { x: center.x - template.w / 2, y: center.y - template.h / 2 });
       });
-      dom.libraryList.appendChild(item);
+      section.appendChild(item);
     });
+    dom.libraryList.appendChild(section);
+  });
+
+  if (!filteredTemplates.length) {
+    dom.libraryList.innerHTML = `<div class="empty-state"><span>No matching gear.</span></div>`;
+  }
+}
+
+function librarySearchText(item) {
+  const group = libraryGroup(item.group);
+  return [item.label, item.jaLabel, item.category, group?.label, group?.jaLabel, ...(item.tags || [])].join(" ").toLowerCase();
+}
+
+function templateByType(type) {
+  return templates.find((item) => item.type === type);
+}
+
+function visibleTemplateByType(type) {
+  const template = templateByType(type);
+  return template && !template.hidden ? template : null;
+}
+
+function fieldCenter() {
+  return { x: WORLD_W / 2, y: WORLD_H / 2 };
+}
+
+function resetViewportToFieldCenter(scale = 1) {
+  const rect = dom.canvasFrame.getBoundingClientRect();
+  const width = rect.width || dom.canvasFrame.clientWidth || window.innerWidth;
+  const height = rect.height || dom.canvasFrame.clientHeight || window.innerHeight;
+  state.viewport = {
+    x: width / 2 - (WORLD_W / 2) * scale,
+    y: height / 2 - (WORLD_H / 2) * scale,
+    scale,
+  };
+}
+
+function resetTransientState() {
+  state.selected = new Set();
+  state.selectedEdge = null;
+  state.connecting = null;
+  state.portDrag = null;
+  state.portPopover = null;
+}
+
+function hasReplaceableFlow() {
+  return state.nodes.length > 0 || state.edges.length > 0;
+}
+
+function confirmReplaceCurrentFlow(message) {
+  if (!hasReplaceableFlow()) return true;
+  return window.confirm(message);
+}
+
+function consumeNewFlowConfirmation() {
+  if (state.pendingNewConfirmed) {
+    state.pendingNewConfirmed = false;
+    return true;
+  }
+  return confirmReplaceCurrentFlow("Start a new flow? The current gear and cables will be replaced.");
 }
 
 function renderWorldTransform() {
@@ -518,6 +573,8 @@ function renderWorldTransform() {
 function renderNodes() {
   dom.nodeLayer.innerHTML = "";
   state.nodes.forEach((node) => {
+    const displayTitle = gearDisplayName(node);
+    const displaySubtitle = node.title?.trim() ? node.subtitle : "";
     const el = document.createElement("article");
     el.className = "gear-node";
     if (state.selected.has(node.id)) el.classList.add("selected");
@@ -531,11 +588,11 @@ function renderNodes() {
       <div class="node-header">
         <div class="node-icon">${iconSvg[node.icon] || iconSvg.box}</div>
         <div>
-          <div class="node-title">${escapeHtml(node.title)}</div>
-          <div class="node-subtitle">${escapeHtml(node.subtitle)}</div>
+          <div class="node-title">${escapeHtml(displayTitle)}</div>
+          ${displaySubtitle ? `<div class="node-subtitle">${escapeHtml(displaySubtitle)}</div>` : ""}
         </div>
       </div>
-      <div class="resize-handle" title="リサイズ"></div>
+      <div class="resize-handle" title="Resize"></div>
     `;
 
     el.addEventListener("pointerdown", (event) => startNodeDrag(event, node));
@@ -553,9 +610,14 @@ function renderQuickHandle(node, side) {
   }
   button.dataset.nodeId = node.id;
   button.dataset.side = side;
-  button.setAttribute("aria-label", `${node.title} ${side} connector`);
+  button.setAttribute("aria-label", `${gearDisplayName(node)} ${side} connector`);
   button.addEventListener("pointerdown", (event) => startConnectorDrag(event, node, side));
   return button;
+}
+
+function gearDisplayName(node) {
+  if (!node) return "Unknown gear";
+  return node?.title?.trim() || node?.subtitle?.trim() || "Untitled gear";
 }
 
 function renderPort(node, port) {
@@ -596,13 +658,15 @@ function renderEdges() {
       "data-edge-id": edge.id,
     });
     const cablePaths = cablePathSvgElements(d, style, state.selectedEdge === edge.id);
+    const controls = cableControlPoints(from, to, endpoints.fromSide, endpoints.toSide);
+    const directionArrows = cableDirectionSvgElements(controls, edge, style.color, state.selectedEdge === edge.id);
     hit.addEventListener("click", () => {
       state.selectedEdge = edge.id;
       state.selected = new Set();
       state.portPopover = null;
       render();
     });
-    dom.edgeLayer.append(hit, ...cablePaths);
+    dom.edgeLayer.append(hit, ...cablePaths, ...directionArrows);
     terminalBadges.push(
       cableEndChipSvg(from, edge, "from", style.color, state.selectedEdge === edge.id, to),
       cableEndChipSvg(to, edge, "to", style.color, state.selectedEdge === edge.id, from),
@@ -626,6 +690,9 @@ function renderInspector() {
     dom.edgeSummary.innerHTML = edgeSummaryMarkup(selectedEdge);
     dom.edgeSignalTypes.innerHTML = Object.entries(LINE_STYLES)
       .map(([type, config]) => `<button class="${edgeLineStyle(selectedEdge) === type ? "active" : ""}" data-edge-line="${type}">${config.label}</button>`)
+      .join("");
+    dom.edgeDirectionTypes.innerHTML = Object.entries(SIGNAL_DIRECTIONS)
+      .map(([type, config]) => `<button class="${edgeSignalDirection(selectedEdge) === type ? "active" : ""}" data-edge-direction="${type}">${config.label}</button>`)
       .join("");
     dom.edgeEndpointEditor.innerHTML = edgeEndpointEditorMarkup(selectedEdge);
     dom.edgeColorInput.value = style.color;
@@ -670,7 +737,7 @@ function renderInputList() {
       `,
         )
         .join("")
-    : `<div class="empty-state"><span>接続すると入力表が自動生成されます。</span></div>`;
+    : `<div class="empty-state"><span>Connect cables to generate the input list.</span></div>`;
 }
 
 function renderPortPopover() {
@@ -697,7 +764,7 @@ function renderPortPopover() {
         <strong>${escapeHtml(node.title)}</strong>
         <span>${escapeHtml(port.label)}</span>
       </div>
-      <button class="icon-button tiny" data-port-popover-close aria-label="閉じる">×</button>
+      <button class="icon-button tiny" data-port-popover-close aria-label="Close">×</button>
     </div>
     <label>
       Port label
@@ -719,8 +786,8 @@ function renderPortPopover() {
         .join("")}
     </div>
     <div class="popover-actions">
-      <button class="full-button" data-port-start-connect>${isConnecting ? "接続待機中" : "接続開始"}</button>
-      <button class="full-button danger" data-port-delete>端子を削除</button>
+      <button class="full-button" data-port-start-connect>${isConnecting ? "Waiting for target" : "Start connection"}</button>
+      <button class="full-button danger" data-port-delete>Delete port</button>
     </div>
   `;
 }
@@ -730,8 +797,9 @@ function edgeSummaryMarkup(edge) {
   const toNode = getNode(edge.to.nodeId);
   return `
     <span class="signal-pill">${escapeHtml(lineStyleLabel(edgeLineStyle(edge)))}</span>
-    <strong>${escapeHtml(fromNode?.title || "Unknown")}</strong>
-    <span>→ ${escapeHtml(toNode?.title || "Unknown")}</span>
+    <span class="signal-pill">${escapeHtml(signalDirectionLabel(edgeSignalDirection(edge)))}</span>
+    <strong>${escapeHtml(gearDisplayName(fromNode))}</strong>
+    <span>→ ${escapeHtml(gearDisplayName(toNode))}</span>
   `;
 }
 
@@ -754,7 +822,7 @@ function edgeEndpointMarkup(endpoint, node, edge) {
   const portLabel = edgeEndpointPortLabel(edge, endpoint);
   return `
     <div class="edge-endpoint">
-      <strong>${endpoint === "from" ? "From" : "To"} · ${escapeHtml(node.title)}</strong>
+      <strong>${endpoint === "from" ? "From" : "To"} · ${escapeHtml(gearDisplayName(node))}</strong>
       <label>
         Port label
         <input data-edge-endpoint-label="${endpoint}" type="text" value="${escapeHtml(portLabel)}" placeholder="${endpoint === "from" ? "Audio out" : "Audio in"}" />
@@ -762,8 +830,7 @@ function edgeEndpointMarkup(endpoint, node, edge) {
       <label>
         Connector shape
         <select data-edge-endpoint-kind="${endpoint}">
-          ${CONNECTOR_SHAPE_OPTIONS.map((option) => `<option value="${option}" ${shapeValue === option ? "selected" : ""}>${connectorLabel(option)}</option>`).join("")}
-          <option value="__custom__" ${isCustom ? "selected" : ""}>Custom...</option>
+          ${connectorShapeOptionsMarkup(shapeValue, isCustom)}
         </select>
       </label>
       <label class="edge-custom-kind ${isCustom ? "" : "hidden"}">
@@ -783,6 +850,17 @@ function edgeEndpointMarkup(endpoint, node, edge) {
       </div>
     </div>
   `;
+}
+
+function connectorShapeOptionsMarkup(shapeValue, isCustom = false) {
+  const groups = CONNECTOR_SHAPE_GROUPS.map(
+    (group) => `
+      <optgroup label="${escapeAttr(group.label)}">
+        ${group.options.map((option) => `<option value="${option}" ${shapeValue === option ? "selected" : ""}>${connectorLabel(option)}</option>`).join("")}
+      </optgroup>
+    `,
+  ).join("");
+  return `${groups}<option value="__custom__" ${isCustom ? "selected" : ""}>${connectorLabel("custom")}</option>`;
 }
 
 function renderMinimap() {
@@ -813,13 +891,13 @@ function makeInputRows() {
     const toNode = getNode(edge.to.nodeId);
     const fromKind = edgeEndpointKind(edge, "from");
     const toKind = edgeEndpointKind(edge, "to");
-    const source = fromNode?.title || "Unknown";
-    const to = toNode?.title || "Unknown";
+    const source = gearDisplayName(fromNode);
+    const to = gearDisplayName(toNode);
     const connector = `${connectorInfoLabel(fromKind, edgeEndpointGender(edge, "from"))} (${edgeEndpointPortLabel(edge, "from")}) → ${connectorInfoLabel(toKind, edgeEndpointGender(edge, "to"))} (${edgeEndpointPortLabel(edge, "to")})`;
     return {
       ch: index + 1,
       source,
-      connector: `${lineStyleLabel(edgeLineStyle(edge))} · ${connector}`,
+      connector: `${lineStyleLabel(edgeLineStyle(edge))} · ${signalDirectionLabel(edgeSignalDirection(edge))} · ${connector}`,
       to,
       notes: compatibilityNote(fromKind, toKind),
     };
@@ -850,6 +928,14 @@ function lineStyleLabel(type) {
   return LINE_STYLES[type]?.label || LINE_STYLES.solid.label;
 }
 
+function edgeSignalDirection(edge) {
+  return SIGNAL_DIRECTIONS[edge?.direction] ? edge.direction : "forward";
+}
+
+function signalDirectionLabel(type) {
+  return SIGNAL_DIRECTIONS[type]?.label || SIGNAL_DIRECTIONS.forward.label;
+}
+
 function cableVisualStyle(edge) {
   const legacy = signalStyle(edge);
   const line = LINE_STYLES[edgeLineStyle(edge)] || LINE_STYLES.solid;
@@ -864,7 +950,7 @@ function cableVisualStyle(edge) {
 function inferSignalType(...kinds) {
   if (kinds.some((kind) => kind === "speakon")) return "speaker";
   if (kinds.some((kind) => kind === "midi")) return "midi";
-  if (kinds.some((kind) => ["usb", "usb-c", "hdmi"].includes(kind))) return "digital";
+  if (kinds.some((kind) => ["usb", "usb-a", "usb-b", "usb-c", "micro-usb", "lan", "hdmi"].includes(kind))) return "digital";
   return "audio";
 }
 
@@ -886,18 +972,26 @@ function compatibilityNote(a, b) {
 
 function connectorLabel(kind) {
   const labels = {
-    xlr: "XLR",
-    "xlr-m": "XLR male",
-    "xlr-f": "XLR female",
-    ts: '1/4" TS',
-    trs: '1/4" TRS',
-    trrs: "TRRS",
-    rca: "RCA",
-    usb: "USB",
-    "usb-c": "USB-C",
-    hdmi: "HDMI",
-    speakon: "SpeakON",
-    midi: "MIDI",
+    xlr: "XLR / キャノン",
+    "xlr-m": "XLR male / キャノン オス",
+    "xlr-f": "XLR female / キャノン メス",
+    ts: "TS / モノラル標準",
+    trs: "TRS / ステレオ標準",
+    "mini-ts": "3.5mm TS / モノラルミニ",
+    "mini-trs": "3.5mm TRS / ステレオミニ",
+    "mini-trrs": "3.5mm TRRS / 4極ミニ",
+    trrs: "3.5mm TRRS / 4極ミニ",
+    rca: "RCA / RCA",
+    usb: "USB-B / USB Type-B",
+    "usb-c": "USB-C / USB Type-C",
+    "usb-a": "USB-A / USB Type-A",
+    "usb-b": "USB-B / USB Type-B",
+    "micro-usb": "Micro USB / Micro USB",
+    lan: "LAN / LAN",
+    hdmi: "HDMI / HDMI",
+    speakon: "SpeakON / スピコン",
+    midi: "MIDI / MIDI",
+    custom: "Custom / カスタム",
   };
   return labels[kind] || String(kind || "").trim() || "Custom";
 }
@@ -973,7 +1067,7 @@ function startPortConnection(nodeId, portId) {
   state.connecting = { nodeId, portId };
   state.portPopover = null;
   render();
-  toast("接続先の端子をクリック");
+  toast("Click the destination gear");
 }
 
 function completeConnection(nodeId, portId) {
@@ -983,7 +1077,7 @@ function completeConnection(nodeId, portId) {
     state.portDrag = null;
     state.portPopover = null;
     render();
-    toast("別の機材の端子へ接続してください");
+    toast("Connect to another piece of gear.");
     return;
   }
   const fromPort = getPort(getNode(state.connecting.nodeId), state.connecting.portId);
@@ -995,6 +1089,7 @@ function completeConnection(nodeId, portId) {
     from: state.connecting,
     to: { nodeId, portId },
     signalType,
+    direction: "forward",
     color: style.color,
     width: style.width,
   };
@@ -1005,7 +1100,7 @@ function completeConnection(nodeId, portId) {
   state.selectedEdge = edge.id;
   state.selected = new Set();
   state.portPopover = null;
-  commit("ケーブルを接続");
+  commit("Connected cable");
   const note = compatibilityNote(fromPort?.kind, toPort?.kind);
   if (note !== "OK" && note !== "Balanced mic/line") toast(note);
 }
@@ -1024,6 +1119,7 @@ function completeNodeConnection(from, to) {
     from: { ...from, kind: fromKind },
     to: { ...to, kind: toKind },
     signalType: inferSignalType(fromKind, toKind),
+    direction: "forward",
     lineStyle: "solid",
     color: "#111111",
     width: 3,
@@ -1035,7 +1131,7 @@ function completeNodeConnection(from, to) {
   state.selectedEdge = edge.id;
   state.selected = new Set();
   state.portPopover = null;
-  commit("ケーブルを接続");
+  commit("Connected cable");
 }
 
 function startNodeDrag(event, node) {
@@ -1158,7 +1254,7 @@ function onPointerUp(event) {
       return;
     }
     render();
-    toast("接続先の端子で離すとケーブルを作れます");
+    toast("Release on another piece of gear to create a cable.");
     return;
   }
   if (state.drag || state.resize || state.pan) {
@@ -1327,6 +1423,7 @@ function edgeEndpointKind(edge, endpoint) {
 function edgeEndpointShapeKind(edge, endpoint) {
   const kind = edgeEndpointKind(edge, endpoint);
   if (kind === "xlr-m" || kind === "xlr-f") return "xlr";
+  if (kind === "usb") return "usb-b";
   return kind;
 }
 
@@ -1360,8 +1457,8 @@ function defaultEndpointPortLabel(edge, endpoint) {
   const kind = edgeEndpointShapeKind(edge, endpoint);
   const direction = endpoint === "from" ? "out" : "in";
   if (kind === "midi") return `MIDI ${direction}`;
-  if (["ts", "trs", "trrs"].includes(kind)) return `Phone ${direction}`;
-  if (["usb", "usb-c", "hdmi"].includes(kind)) return `Digital ${direction}`;
+  if (["ts", "trs", "trrs", "mini-ts", "mini-trs", "mini-trrs"].includes(kind)) return `Phone ${direction}`;
+  if (["usb", "usb-a", "usb-b", "usb-c", "micro-usb", "lan", "hdmi"].includes(kind)) return `Digital ${direction}`;
   if (kind === "speakon") return `Speaker ${direction}`;
   return `Audio ${direction}`;
 }
@@ -1455,6 +1552,53 @@ function cablePathMarkup(d, style) {
   }
   const dash = style.dash ? ` stroke-dasharray="${style.dash}"` : "";
   return `<path d="${d}" fill="none" stroke="${style.color}" stroke-width="${style.width}" ${linecap}${dash}/>`;
+}
+
+function cableDirectionSvgElements(controls, edge, color, selected = false) {
+  const direction = edgeSignalDirection(edge);
+  if (direction === "none") return [];
+  const items =
+    direction === "both"
+      ? [
+          { t: 0.44, reverse: true },
+          { t: 0.56, reverse: false },
+        ]
+      : [{ t: 0.5, reverse: direction === "reverse" }];
+  return items.map((item) => cableDirectionArrowSvg(controls, item.t, item.reverse, color, selected));
+}
+
+function cableDirectionArrowSvg(controls, t, reverse, color, selected = false) {
+  const point = cubicPoint(controls, t);
+  const tangent = cubicTangent(controls, t);
+  const angle = (Math.atan2(tangent.y, tangent.x) * 180) / Math.PI + (reverse ? 180 : 0);
+  const group = svgEl("g", {
+    class: `cable-direction-arrow ${selected ? "selected" : ""}`,
+    transform: `translate(${point.x} ${point.y}) rotate(${angle})`,
+  });
+  const halo = svgEl("path", { class: "cable-direction-halo", d: "M -8 -7 L 8 0 L -8 7 Z" });
+  const head = svgEl("path", { class: "cable-direction-head", d: "M -7 -5.5 L 7 0 L -7 5.5 Z", fill: color });
+  group.append(halo, head);
+  return group;
+}
+
+function cableDirectionMarkup(controls, edge, color) {
+  const direction = edgeSignalDirection(edge);
+  if (direction === "none") return "";
+  const items =
+    direction === "both"
+      ? [
+          { t: 0.44, reverse: true },
+          { t: 0.56, reverse: false },
+        ]
+      : [{ t: 0.5, reverse: direction === "reverse" }];
+  return items
+    .map((item) => {
+      const point = cubicPoint(controls, item.t);
+      const tangent = cubicTangent(controls, item.t);
+      const angle = (Math.atan2(tangent.y, tangent.x) * 180) / Math.PI + (item.reverse ? 180 : 0);
+      return `<g transform="translate(${point.x} ${point.y}) rotate(${angle})"><path d="M -8 -7 L 8 0 L -8 7 Z" fill="#ffffff" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/><path d="M -7 -5.5 L 7 0 L -7 5.5 Z" fill="${escapeAttr(color)}"/></g>`;
+    })
+    .join("");
 }
 
 function renderPortDragPreview() {
@@ -1685,10 +1829,17 @@ function connectorTagLabel(kind) {
     "xlr-f": "XLR",
     ts: "TS",
     trs: "TRS",
-    trrs: "TRRS",
+    "mini-ts": "3.5 TS",
+    "mini-trs": "3.5 TRS",
+    "mini-trrs": "3.5 TRRS",
+    trrs: "3.5 TRRS",
     rca: "RCA",
-    usb: "USB",
+    usb: "USB-B",
+    "usb-a": "USB-A",
+    "usb-b": "USB-B",
     "usb-c": "USB-C",
+    "micro-usb": "Micro USB",
+    lan: "LAN",
     hdmi: "HDMI",
     speakon: "SpeakON",
     midi: "MIDI",
@@ -1708,14 +1859,23 @@ function connectorGenderLabel(gender, short = false) {
 }
 
 function connectorTerminalShape(kind, color, gender = "") {
-  const normalized = kind === "xlr-m" || kind === "xlr-f" ? "xlr" : kind;
+  const normalized = kind === "xlr-m" || kind === "xlr-f" ? "xlr" : kind === "usb" ? "usb-b" : kind;
   const stroke = color || "#111111";
   const pinFill = gender === "female" ? "#fff" : stroke;
   const pinStroke = gender === "female" ? stroke : "none";
-  if (["usb", "usb-c", "hdmi"].includes(normalized)) {
+  if (["usb-a", "usb-b", "usb-c", "micro-usb", "hdmi"].includes(normalized)) {
+    const rx = normalized === "usb-c" ? 5 : normalized === "micro-usb" ? 1.5 : 2;
+    const height = normalized === "micro-usb" ? 7 : normalized === "usb-c" ? 8 : 10;
     return [
-      svgEl("rect", { x: -7, y: -5, width: 14, height: 10, rx: normalized === "usb-c" ? 5 : 2, fill: "#fff", stroke, "stroke-width": 2 }),
+      svgEl("rect", { x: -7, y: -height / 2, width: 14, height, rx, fill: "#fff", stroke, "stroke-width": 2 }),
       svgEl("line", { x1: -3, y1: 0, x2: 3, y2: 0, stroke, "stroke-width": 1.5 }),
+    ];
+  }
+  if (normalized === "lan") {
+    return [
+      svgEl("rect", { x: -7, y: -6, width: 14, height: 12, rx: 1.5, fill: "#fff", stroke, "stroke-width": 2 }),
+      svgEl("path", { d: "M -4 -2h8v5h-8Z", fill: "none", stroke, "stroke-width": 1.2 }),
+      svgEl("path", { d: "M -4 -5v3M -1 -5v3M 2 -5v3M 5 -5v3", stroke, "stroke-width": 1 }),
     ];
   }
   if (normalized === "rca") {
@@ -1737,11 +1897,15 @@ function connectorTerminalShape(kind, color, gender = "") {
       svgEl("rect", { x: -3.5, y: -3.5, width: 7, height: 7, fill: "none", stroke, "stroke-width": 1.5 }),
     ];
   }
-  if (["ts", "trs", "trrs"].includes(normalized)) {
+  if (["ts", "trs", "trrs", "mini-ts", "mini-trs", "mini-trrs"].includes(normalized)) {
+    const ringCount = normalized === "ts" || normalized === "mini-ts" ? 1 : normalized === "trs" || normalized === "mini-trs" ? 2 : 3;
     return [
       svgEl("circle", { cx: 0, cy: 0, r: 7, fill: "#fff", stroke, "stroke-width": 2 }),
       svgEl("line", { x1: -4, y1: 0, x2: 4, y2: 0, stroke, "stroke-width": 1.8 }),
-      svgEl("line", { x1: normalized === "ts" ? 0 : -1.5, y1: -4, x2: normalized === "ts" ? 0 : -1.5, y2: 4, stroke, "stroke-width": 1.2 }),
+      ...Array.from({ length: ringCount }, (_, index) => {
+        const x = ringCount === 1 ? 0 : -2 + index * 2;
+        return svgEl("line", { x1: x, y1: -4, x2: x, y2: 4, stroke, "stroke-width": 1.2 });
+      }),
     ];
   }
   return [
@@ -1784,6 +1948,14 @@ function cubicPoint({ p0, c1, c2, p3 }, t) {
   return {
     x: mt ** 3 * p0.x + 3 * mt ** 2 * t * c1.x + 3 * mt * t ** 2 * c2.x + t ** 3 * p3.x,
     y: mt ** 3 * p0.y + 3 * mt ** 2 * t * c1.y + 3 * mt * t ** 2 * c2.y + t ** 3 * p3.y,
+  };
+}
+
+function cubicTangent({ p0, c1, c2, p3 }, t) {
+  const mt = 1 - t;
+  return {
+    x: 3 * mt ** 2 * (c1.x - p0.x) + 6 * mt * t * (c2.x - c1.x) + 3 * t ** 2 * (p3.x - c2.x),
+    y: 3 * mt ** 2 * (c1.y - p0.y) + 6 * mt * t * (c2.y - c1.y) + 3 * t ** 2 * (p3.y - c2.y),
   };
 }
 
@@ -1907,18 +2079,19 @@ function normalizeColor(color) {
   return ctx.fillStyle;
 }
 
-function filename(ext) {
+function filename(ext, suffix = "") {
   const date = new Date().toISOString().slice(0, 10);
   const safe = state.name.replace(/[\\/:*?"<>|\s]+/g, "_").replace(/^_+|_+$/g, "") || "project";
-  return `gearflow_${safe}_${date}.${ext}`;
+  const suffixPart = suffix ? `_${suffix}` : "";
+  return `gearflow_${safe}${suffixPart}_${date}.${ext}`;
 }
 
-function downloadText(text, ext, type) {
+function downloadText(text, ext, type, suffix = "") {
   const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = filename(ext);
+  link.download = filename(ext, suffix);
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -1926,10 +2099,11 @@ function downloadText(text, ext, type) {
 function downloadJson() {
   persist();
   downloadText(JSON.stringify(exportData(), null, 2), "json", "application/json");
-  toast("JSONを保存しました");
+  toast("JSON saved");
 }
 
-function buildExportSvg() {
+function buildExportSvg(options = {}) {
+  const includeNodes = options.includeNodes !== false;
   const bounds = contentBounds();
   const pad = 80;
   const x = bounds.x - pad;
@@ -1941,7 +2115,9 @@ function buildExportSvg() {
       const endpoints = edgeEndpointPoints(edge);
       if (!endpoints) return "";
       const style = cableVisualStyle(edge);
-      return cablePathMarkup(cablePath(endpoints.from, endpoints.to, endpoints.fromSide, endpoints.toSide), style);
+      const controls = cableControlPoints(endpoints.from, endpoints.to, endpoints.fromSide, endpoints.toSide);
+      const path = cablePath(endpoints.from, endpoints.to, endpoints.fromSide, endpoints.toSide);
+      return `${cablePathMarkup(path, style)}${cableDirectionMarkup(controls, edge, style.color)}`;
     })
     .join("");
   const terminalMarkup = state.edges
@@ -1971,7 +2147,7 @@ function buildExportSvg() {
       </defs>
       <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#grid)"/>
       ${edgePathMarkup}
-      ${nodeMarkup}
+      ${includeNodes ? nodeMarkup : ""}
       ${terminalMarkup}
     </svg>
   `.trim();
@@ -1988,7 +2164,7 @@ function contentBounds() {
 
 function downloadSvg() {
   downloadText(buildExportSvg(), "svg", "image/svg+xml");
-  toast("SVGを書き出しました");
+  toast("SVG exported");
 }
 
 async function downloadPng() {
@@ -2014,14 +2190,14 @@ async function downloadPng() {
     link.download = filename("png");
     link.click();
     URL.revokeObjectURL(url);
-    toast("PNGを書き出しました");
+    toast("PNG exported");
   }, "image/png");
 }
 
 function preparePrint() {
   const rows = makeInputRows();
   dom.printTitle.textContent = state.name || "GearFlow";
-  dom.printMeta.textContent = `Generated ${new Date().toLocaleString("ja-JP")} · ${state.nodes.length} gear · ${state.edges.length} cables`;
+  dom.printMeta.textContent = `Generated ${new Date().toLocaleString("en-US")} · ${state.nodes.length} gear · ${state.edges.length} cables`;
   dom.printNotes.textContent = state.notes || "No notes";
   dom.printDiagram.innerHTML = buildExportSvg();
   dom.printInputRows.innerHTML = rows
@@ -2040,7 +2216,7 @@ function preparePrint() {
 }
 
 function clearAll() {
-  if (!confirm("すべての機材と接続を削除しますか？")) return;
+  if (!confirm("Delete all gear and cables?")) return;
   state.nodes = [];
   state.edges = [];
   state.selected = new Set();
@@ -2048,8 +2224,8 @@ function clearAll() {
   state.connecting = null;
   state.portDrag = null;
   state.portPopover = null;
-  commit("クリアしました");
-  toast("キャンバスをクリアしました");
+  commit("Cleared canvas");
+  toast("Canvas cleared");
 }
 
 function undo() {
@@ -2076,7 +2252,7 @@ function deleteSelected() {
     state.connecting = null;
     state.portDrag = null;
     state.portPopover = null;
-    commit("ケーブルを削除");
+    commit("Deleted cable");
     return;
   }
   state.nodes = state.nodes.filter((node) => !ids.has(node.id));
@@ -2085,14 +2261,14 @@ function deleteSelected() {
   state.connecting = null;
   state.portDrag = null;
   state.portPopover = null;
-  commit("選択を削除");
+  commit("Deleted selection");
 }
 
 function copySelection() {
   const ids = new Set(state.selected);
   const nodes = state.nodes.filter((node) => ids.has(node.id));
   if (!nodes.length) {
-    toast("コピーする機材を選択してください");
+    toast("Select gear to copy.");
     return;
   }
   const edges = state.edges.filter((edge) => ids.has(edge.from.nodeId) && ids.has(edge.to.nodeId));
@@ -2107,7 +2283,7 @@ function copySelection() {
   if (navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(JSON.stringify(payload)).catch(() => {});
   }
-  toast(`${nodes.length}個の機材をコピーしました`);
+  toast(`Copied ${nodes.length} ${nodes.length === 1 ? "piece of gear" : "pieces of gear"}.`);
 }
 
 async function pasteSelection() {
@@ -2121,7 +2297,7 @@ async function pasteSelection() {
     }
   }
   if (!payload?.nodes?.length) {
-    toast("ペーストできる機材がありません");
+    toast("No gear available to paste.");
     return;
   }
 
@@ -2169,7 +2345,7 @@ async function pasteSelection() {
   autoPlaceConnectedPortsForNodeIds(newNodes.map((node) => node.id));
   state.selected = new Set(newNodes.map((node) => node.id));
   state.selectedEdge = null;
-  commit(`${newNodes.length}個の機材をペースト`);
+  commit(`Pasted ${newNodes.length} ${newNodes.length === 1 ? "piece of gear" : "pieces of gear"}`);
 }
 
 function alignSelected(axis) {
@@ -2181,10 +2357,24 @@ function alignSelected(axis) {
     else node.y = value;
   });
   autoPlaceConnectedPortsForNodeIds(selected.map((node) => node.id));
-  commit(axis === "x" ? "左揃え" : "上揃え");
+  commit(axis === "x" ? "Aligned left" : "Aligned top");
+}
+
+function alignSelectedCenter(axis) {
+  const selected = state.nodes.filter((node) => state.selected.has(node.id));
+  if (selected.length < 2) return;
+  const centers = selected.map((node) => (axis === "x" ? node.x + node.w / 2 : node.y + node.h / 2));
+  const center = centers.reduce((sum, value) => sum + value, 0) / centers.length;
+  selected.forEach((node) => {
+    if (axis === "x") node.x = Math.round((center - node.w / 2) / GRID_SIZE) * GRID_SIZE;
+    else node.y = Math.round((center - node.h / 2) / GRID_SIZE) * GRID_SIZE;
+  });
+  autoPlaceConnectedPortsForNodeIds(selected.map((node) => node.id));
+  commit(axis === "x" ? "Aligned horizontal centers" : "Aligned vertical centers");
 }
 
 function showHistory() {
+  closeMenus();
   const versions = readVersions();
   dom.historyList.innerHTML = versions.length
     ? versions
@@ -2193,52 +2383,82 @@ function showHistory() {
         <div class="history-item">
           <div>
             <strong>${escapeHtml(item.name)}</strong>
-            <span>${new Date(item.savedAt).toLocaleString("ja-JP")} · ${item.nodes} nodes · ${item.edges} cables</span>
+            <span>${new Date(item.savedAt).toLocaleString("en-US")} · ${item.nodes} nodes · ${item.edges} cables</span>
           </div>
-          <button class="text-button" data-restore-version="${item.id}">復元</button>
+          <button class="text-button" data-restore-version="${item.id}">Restore</button>
         </div>
       `,
         )
         .join("")
-    : `<div class="empty-state"><span>まだ履歴がありません。</span></div>`;
+    : `<div class="empty-state"><span>No history yet.</span></div>`;
   dom.historyDialog.showModal();
 }
 
-function setMenuOpen(open) {
-  dom.appMenu.classList.toggle("hidden", !open);
-  dom.menuBtn.setAttribute("aria-expanded", String(open));
+function closeMenus(except = null) {
+  $$(".menu-wrap").forEach((wrap) => {
+    if (wrap === except) return;
+    wrap.querySelector("[data-menu]")?.classList.add("hidden");
+    wrap.querySelector("[data-menu-button]")?.setAttribute("aria-expanded", "false");
+  });
 }
 
-function toggleMenu() {
-  setMenuOpen(dom.appMenu.classList.contains("hidden"));
+function toggleMenu(wrap) {
+  const menu = wrap.querySelector("[data-menu]");
+  const button = wrap.querySelector("[data-menu-button]");
+  const open = menu.classList.contains("hidden");
+  closeMenus(open ? wrap : null);
+  menu.classList.toggle("hidden", !open);
+  button.setAttribute("aria-expanded", String(open));
 }
 
 function showDocumentDialog() {
-  setMenuOpen(false);
+  closeMenus();
   updateStorageMeter();
   dom.documentDialog.showModal();
 }
 
+function showInputListDialog() {
+  closeMenus();
+  renderInputList();
+  dom.inputListDialog.showModal();
+}
+
+function autoPlaceAllEdges() {
+  closeMenus();
+  autoPlacePortsForEdges();
+  renderEdges();
+  renderNodes();
+  renderInputList();
+  renderInspector();
+  renderMinimap();
+  scheduleAutosave("Autosaved");
+  toast("Cable endpoints auto-placed");
+}
+
 function showStartDialog() {
+  closeMenus();
+  if (!confirmReplaceCurrentFlow("Start a new flow? The current gear and cables will be replaced after you choose an option.")) return;
+  state.pendingNewConfirmed = true;
   if (!dom.startDialog.open) dom.startDialog.showModal();
 }
 
 function closeStartDialog() {
+  state.pendingNewConfirmed = false;
   if (dom.startDialog.open) dom.startDialog.close();
 }
 
 function startBlankFlow() {
+  if (!consumeNewFlowConfirmation()) return;
+  pushHistory();
+  state.name = "Live PA";
+  state.notes = "";
   state.nodes = [];
   state.edges = [];
-  state.selected = new Set();
-  state.selectedEdge = null;
-  state.connecting = null;
-  state.portDrag = null;
-  state.portPopover = null;
+  resetTransientState();
+  resetViewportToFieldCenter(1);
   closeStartDialog();
-  if (!state.history.length) pushHistory();
-  render();
-  scheduleAutosave("まっさらで開始");
+  commit("Started blank flow");
+  toast("Started blank flow");
 }
 
 function restoreVersion(id) {
@@ -2246,17 +2466,18 @@ function restoreVersion(id) {
   if (!item) return;
   restoreSnapshot(JSON.parse(item.payload));
   dom.historyDialog.close();
-  toast("履歴から復元しました");
+  toast("Restored from history");
 }
 
 function loadFile(file) {
+  if (!confirmReplaceCurrentFlow("Load this file? The current gear and cables will be replaced.")) return;
   const reader = new FileReader();
   reader.onload = () => {
     try {
       restoreSnapshot(JSON.parse(reader.result));
-      toast("ファイルを読み込みました");
+      toast("File loaded");
     } catch {
-      toast("JSONの読み込みに失敗しました");
+      toast("Could not load JSON");
     }
   };
   reader.readAsText(file);
@@ -2270,88 +2491,107 @@ function toast(message) {
   setTimeout(() => el.remove(), 3200);
 }
 
-function seedProject() {
-  state.nodes = [
-    { ...makeNode(templates[0], 560, 680), title: "Lead Vocal", subtitle: "SM58" },
-    { ...makeNode(templates[4], 560, 910), title: "Main Synth", subtitle: "Stereo out" },
-    { ...makeNode(templates[1], 815, 910), title: "DI L", subtitle: "Keys left" },
-    { ...makeNode(templates[3], 1110, 690), title: "Stagebox", subtitle: "Venue" },
-    { ...makeNode(templates[2], 1100, 930), title: "FOH Mixer", subtitle: "House" },
-    { ...makeNode(templates[7], 820, 1160), title: "Monitor 1", subtitle: "Vocal wedge" },
-  ];
-  const n = state.nodes;
+function templateNode(type, dx, dy, overrides = {}) {
+  const template = visibleTemplateByType(type);
+  if (!template) return null;
+  const center = fieldCenter();
+  return { ...makeNode(template, center.x + dx, center.y + dy), ...overrides };
+}
+
+function templateCable(fromNode, toNode, config = {}) {
+  if (!fromNode || !toNode) return null;
+  const fromKind = config.fromKind || "xlr-m";
+  const toKind = config.toKind || "xlr-f";
+  const signalType = config.signalType || inferSignalType(fromKind, toKind);
+  const style = SIGNAL_TYPES[signalType] || SIGNAL_TYPES.audio;
+  return {
+    id: uid("edge"),
+    from: {
+      nodeId: fromNode.id,
+      side: config.fromSide || "right",
+      offset: config.fromOffset ?? 0.5,
+      kind: fromKind,
+      label: config.fromLabel,
+    },
+    to: {
+      nodeId: toNode.id,
+      side: config.toSide || "left",
+      offset: config.toOffset ?? 0.5,
+      kind: toKind,
+      label: config.toLabel,
+    },
+    signalType,
+    direction: config.direction || "forward",
+    lineStyle: config.lineStyle || "solid",
+    color: config.color || style.color,
+    width: config.width || style.width,
+  };
+}
+
+function seedBandTemplate() {
+  const vocal = templateNode("microphone", -760, -360, { title: "Vocal Mic", subtitle: "Microphone" });
+  const guitar = templateNode("guitar", -760, -90, { title: "Guitar", subtitle: "Guitar" });
+  const bass = templateNode("bass", -760, 180, { title: "Bass", subtitle: "Bass" });
+  const guitarAmp = templateNode("guitar-amplifier", -390, -90, { title: "Guitar Amp", subtitle: "Amp" });
+  const bassAmp = templateNode("bass-amplifier", -390, 180, { title: "Bass Amp", subtitle: "Amp" });
+  const mixer = templateNode("mixer", 0, -40, { title: "Sub Mixer", subtitle: "Mixer" });
+  const speakerL = templateNode("speaker", 420, -210, { title: "Main Speaker L", subtitle: "Speaker" });
+  const speakerR = templateNode("speaker", 420, 160, { title: "Main Speaker R", subtitle: "Speaker" });
+
+  state.name = "3pc Band";
+  state.notes = "";
+  state.nodes = [vocal, guitar, bass, guitarAmp, bassAmp, mixer, speakerL, speakerR].filter(Boolean);
   state.edges = [
-    {
-      id: uid("edge"),
-      from: { nodeId: n[0].id, side: "right", offset: 0.5, kind: "xlr-m" },
-      to: { nodeId: n[3].id, side: "left", offset: 0.22, kind: "xlr-f" },
-      lineStyle: "solid",
-      color: "#111",
-      width: 3,
-    },
-    {
-      id: uid("edge"),
-      from: { nodeId: n[1].id, side: "right", offset: 0.5, kind: "trs" },
-      to: { nodeId: n[2].id, side: "left", offset: 0.45, kind: "ts" },
-      lineStyle: "solid",
-      color: "#111",
-      width: 3,
-    },
-    {
-      id: uid("edge"),
-      from: { nodeId: n[2].id, side: "right", offset: 0.5, kind: "xlr-m" },
-      to: { nodeId: n[3].id, side: "left", offset: 0.45, kind: "xlr-f" },
-      lineStyle: "solid",
-      color: "#111",
-      width: 3,
-    },
-    {
-      id: uid("edge"),
-      from: { nodeId: n[3].id, side: "bottom", offset: 0.55, kind: "trs" },
-      to: { nodeId: n[5].id, side: "top", offset: 0.5, kind: "xlr-f" },
-      lineStyle: "solid",
-      color: "#111",
-      width: 3,
-    },
-  ];
-  state.edges.forEach((edge) => {
-    edge.signalType = inferSignalType(edgeEndpointKind(edge, "from"), edgeEndpointKind(edge, "to"));
-  });
+    templateCable(vocal, mixer, { fromKind: "xlr-m", toKind: "xlr-f", fromLabel: "Vocal out", toLabel: "Mic in" }),
+    templateCable(guitar, guitarAmp, { fromKind: "ts", toKind: "ts", fromLabel: "Instrument out", toLabel: "Guitar in" }),
+    templateCable(guitarAmp, mixer, { fromKind: "xlr-m", toKind: "xlr-f", fromLabel: "Mic out", toLabel: "Guitar mic in" }),
+    templateCable(bass, bassAmp, { fromKind: "ts", toKind: "ts", fromLabel: "Instrument out", toLabel: "Bass in" }),
+    templateCable(bassAmp, mixer, { fromKind: "xlr-m", toKind: "xlr-f", fromLabel: "DI out", toLabel: "Bass in" }),
+    templateCable(mixer, speakerL, { fromKind: "xlr-m", toKind: "xlr-f", fromLabel: "Main L", toLabel: "Audio in" }),
+    templateCable(mixer, speakerR, { fromKind: "xlr-m", toKind: "xlr-f", fromLabel: "Main R", toLabel: "Audio in" }),
+  ].filter(Boolean);
   autoPlacePortsForEdges();
 }
 
+function seedDjTemplate() {
+  const cdjA = templateNode("cdj", -780, -330, { title: "CDJ 1", subtitle: "DJ Gear" });
+  const cdjB = templateNode("cdj", -780, -110, { title: "CDJ 2", subtitle: "DJ Gear" });
+  const turntable = templateNode("turntable", -780, 120, { title: "Turntable", subtitle: "DJ Gear" });
+  const laptop = templateNode("laptop", -780, 360, { title: "Laptop PC", subtitle: "Host" });
+  const audioInterface = templateNode("audio-interface", -420, 340, { title: "Audio Interface", subtitle: "Audio I/O" });
+  const mixer = templateNode("mixer", -80, -40, { title: "Sub Mixer", subtitle: "Mixer" });
+  const speakerL = templateNode("speaker", 420, -220, { title: "Main Speaker L", subtitle: "Speaker" });
+  const speakerR = templateNode("speaker", 420, 150, { title: "Main Speaker R", subtitle: "Speaker" });
+
+  state.name = "DJ Set";
+  state.notes = "";
+  state.nodes = [cdjA, cdjB, turntable, laptop, audioInterface, mixer, speakerL, speakerR].filter(Boolean);
+  state.edges = [
+    templateCable(cdjA, mixer, { fromKind: "rca", toKind: "rca", fromLabel: "Stereo out", toLabel: "Line in 1", lineStyle: "double" }),
+    templateCable(cdjB, mixer, { fromKind: "rca", toKind: "rca", fromLabel: "Stereo out", toLabel: "Line in 2", lineStyle: "double" }),
+    templateCable(turntable, mixer, { fromKind: "rca", toKind: "rca", fromLabel: "Phono out", toLabel: "Phono in", lineStyle: "double" }),
+    templateCable(laptop, audioInterface, { fromKind: "usb-c", toKind: "usb-c", fromLabel: "USB out", toLabel: "USB in" }),
+    templateCable(audioInterface, mixer, { fromKind: "trs", toKind: "trs", fromLabel: "Stereo out", toLabel: "Line in 3/4", lineStyle: "double" }),
+    templateCable(mixer, speakerL, { fromKind: "xlr-m", toKind: "xlr-f", fromLabel: "Main L", toLabel: "Audio in" }),
+    templateCable(mixer, speakerR, { fromKind: "xlr-m", toKind: "xlr-f", fromLabel: "Main R", toLabel: "Audio in" }),
+  ].filter(Boolean);
+  autoPlacePortsForEdges();
+}
+
+function seedProject() {
+  seedBandTemplate();
+}
+
 function applyTemplate(kind) {
-  closeStartDialog();
+  if (!consumeNewFlowConfirmation()) return;
   pushHistory();
-  state.nodes = [];
-  state.edges = [];
-  if (kind === "dj") {
-    state.nodes = [
-      { ...makeNode(templates[5], 560, 820), title: "DJ Mixer", subtitle: "Performer" },
-      { ...makeNode(templates[1], 835, 760), title: "DI L", subtitle: "RCA to XLR" },
-      { ...makeNode(templates[1], 835, 960), title: "DI R", subtitle: "RCA to XLR" },
-      { ...makeNode(templates[3], 1120, 860), title: "Stagebox", subtitle: "Venue" },
-    ];
-    const n = state.nodes;
-    state.edges = [
-      { id: uid("edge"), from: { nodeId: n[0].id, side: "right", offset: 0.34, kind: "rca" }, to: { nodeId: n[1].id, side: "left", offset: 0.5, kind: "ts" }, lineStyle: "solid", color: "#111", width: 3 },
-      { id: uid("edge"), from: { nodeId: n[0].id, side: "right", offset: 0.58, kind: "rca" }, to: { nodeId: n[2].id, side: "left", offset: 0.5, kind: "ts" }, lineStyle: "solid", color: "#111", width: 3 },
-      { id: uid("edge"), from: { nodeId: n[1].id, side: "right", offset: 0.5, kind: "xlr-m" }, to: { nodeId: n[3].id, side: "left", offset: 0.34, kind: "xlr-f" }, lineStyle: "solid", color: "#111", width: 3 },
-      { id: uid("edge"), from: { nodeId: n[2].id, side: "right", offset: 0.5, kind: "xlr-m" }, to: { nodeId: n[3].id, side: "left", offset: 0.58, kind: "xlr-f" }, lineStyle: "solid", color: "#111", width: 3 },
-    ];
-    state.edges.forEach((edge) => {
-      edge.signalType = inferSignalType(edgeEndpointKind(edge, "from"), edgeEndpointKind(edge, "to"));
-    });
-    autoPlacePortsForEdges();
-  } else {
-    seedProject();
-  }
-  state.selected = new Set();
-  state.connecting = null;
-  state.portDrag = null;
-  render();
-  scheduleAutosave("テンプレートを適用");
-  toast("テンプレートを適用しました");
+  if (kind === "dj") seedDjTemplate();
+  else seedBandTemplate();
+  resetTransientState();
+  resetViewportToFieldCenter(1);
+  closeStartDialog();
+  commit("Template applied");
+  toast("Template applied");
 }
 
 function bindEvents() {
@@ -2383,6 +2623,7 @@ function bindEvents() {
     if (!type) return;
     event.preventDefault();
     const template = templates.find((item) => item.type === type);
+    if (!template) return;
     const point = screenToWorld(event.clientX, event.clientY);
     addNode(template, { x: point.x - template.w / 2, y: point.y - template.h / 2 });
   });
@@ -2398,27 +2639,43 @@ function bindEvents() {
 
   $("#undoBtn").addEventListener("click", undo);
   $("#redoBtn").addEventListener("click", redo);
-  $("#copyBtn").addEventListener("click", copySelection);
-  $("#pasteBtn").addEventListener("click", pasteSelection);
-  $("#alignLeftBtn").addEventListener("click", () => alignSelected("x"));
-  $("#alignTopBtn").addEventListener("click", () => alignSelected("y"));
-  $("#saveBtn").addEventListener("click", downloadJson);
-  $("#pngBtn").addEventListener("click", downloadPng);
-  $("#svgBtn").addEventListener("click", downloadSvg);
-  $("#pdfBtn").addEventListener("click", () => {
+  $("#alignVerticalCenterBtn").addEventListener("click", () => alignSelectedCenter("y"));
+  $("#alignHorizontalCenterBtn").addEventListener("click", () => alignSelectedCenter("x"));
+  $$("[data-menu-button]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleMenu(button.closest(".menu-wrap"));
+    });
+  });
+  $("#newMenuItem").addEventListener("click", showStartDialog);
+  $("#loadMenuItem").addEventListener("click", () => {
+    closeMenus();
+    dom.fileInput.click();
+  });
+  $("#jsonMenuItem").addEventListener("click", () => {
+    closeMenus();
+    downloadJson();
+  });
+  $("#pngMenuItem").addEventListener("click", () => {
+    closeMenus();
+    downloadPng();
+  });
+  $("#svgMenuItem").addEventListener("click", () => {
+    closeMenus();
+    downloadSvg();
+  });
+  $("#pdfMenuItem").addEventListener("click", () => {
+    closeMenus();
     preparePrint();
     window.print();
   });
-  $("#clearBtn").addEventListener("click", clearAll);
-  dom.menuBtn.addEventListener("click", (event) => {
-    event.stopPropagation();
-    toggleMenu();
-  });
   $("#documentMenuItem").addEventListener("click", showDocumentDialog);
-  $("#historyBtn").addEventListener("click", showHistory);
-  $("#loadBtn").addEventListener("click", () => dom.fileInput.click());
+  $("#inputListMenuItem").addEventListener("click", showInputListDialog);
+  $("#autoPlaceMenuItem").addEventListener("click", autoPlaceAllEdges);
+  $("#historyMenuItem").addEventListener("click", showHistory);
   $("#closeHistoryBtn").addEventListener("click", () => dom.historyDialog.close());
   $("#closeDocumentBtn").addEventListener("click", () => dom.documentDialog.close());
+  $("#closeInputListBtn").addEventListener("click", () => dom.inputListDialog.close());
   $("#closeStartBtn").addEventListener("click", closeStartDialog);
   $("#startBlankBtn").addEventListener("click", startBlankFlow);
   $("#startBandBtn").addEventListener("click", () => applyTemplate("band"));
@@ -2431,7 +2688,23 @@ function bindEvents() {
     const rect = dom.canvasFrame.getBoundingClientRect();
     setZoom(state.viewport.scale - 0.12, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   });
-  $("#addBlankBtn").addEventListener("click", () => addNode({ ...templates[1], title: "Custom Gear", subtitle: "New device" }, screenToWorld(window.innerWidth / 2, window.innerHeight / 2)));
+  $("#addBlankBtn").addEventListener("click", () =>
+    addNode(
+      {
+        type: "custom",
+        label: "Custom Gear",
+        title: "",
+        subtitle: "Custom Gear",
+        category: "Gear",
+        icon: "box",
+        w: 180,
+        h: 112,
+        tags: [],
+        ports: [],
+      },
+      screenToWorld(window.innerWidth / 2, window.innerHeight / 2),
+    ),
+  );
   dom.edgeInspector.addEventListener("input", handleEdgeInspectorInput);
   dom.edgeInspector.addEventListener("change", handleEdgeInspectorChange);
   dom.edgeInspector.addEventListener("click", handleEdgeInspectorClick);
@@ -2468,7 +2741,7 @@ function bindEvents() {
     if (button) restoreVersion(button.dataset.restoreVersion);
   });
   window.addEventListener("pointerdown", (event) => {
-    if (!event.target.closest(".menu-wrap")) setMenuOpen(false);
+    if (!event.target.closest(".menu-wrap")) closeMenus();
   });
   window.addEventListener("keydown", (event) => {
     const isTextField = ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName);
@@ -2489,7 +2762,7 @@ function bindEvents() {
       if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
       deleteSelected();
     } else if (event.key === "Escape") {
-      setMenuOpen(false);
+      closeMenus();
       closeStartDialog();
       state.connecting = null;
       state.portDrag = null;
@@ -2609,12 +2882,21 @@ function handleEdgeInspectorClick(event) {
     scheduleAutosave("Autosaved");
     return;
   }
+  const directionButton = event.target.closest("[data-edge-direction]");
+  if (directionButton) {
+    edge.direction = directionButton.dataset.edgeDirection;
+    renderEdges();
+    renderInspector();
+    renderInputList();
+    scheduleAutosave("Autosaved");
+    return;
+  }
   if (event.target.closest("#autoPlaceEdgeBtn")) {
     autoPlaceConnectedPortsForNodeIds([edge.from.nodeId, edge.to.nodeId]);
     renderEdges();
     renderNodes();
     renderInspector();
-    toast("端子を近い辺へ自動配置しました");
+    toast("Endpoints moved to the nearest sides");
   }
 }
 
@@ -2685,7 +2967,7 @@ function handlePortPopoverClick(event) {
     node.ports = node.ports.filter((item) => item.id !== port.id);
     state.edges = state.edges.filter((edge) => edge.from.portId !== port.id && edge.to.portId !== port.id);
     state.portPopover = null;
-    commit("端子を削除");
+    commit("Deleted port");
   }
 }
 
@@ -2714,12 +2996,12 @@ function handlePortInspectorClick(event) {
     const portId = deleteButton.dataset.deletePort;
     node.ports = node.ports.filter((port) => port.id !== portId);
     state.edges = state.edges.filter((edge) => edge.from.portId !== portId && edge.to.portId !== portId);
-    commit("端子を削除");
+    commit("Deleted port");
   }
   if (sideButton) {
     const portId = sideButton.parentElement.dataset.portSide;
     getPort(node, portId).side = sideButton.dataset.side;
-    commit("端子位置を変更");
+    commit("Moved port");
   }
 }
 
@@ -2728,7 +3010,7 @@ function loadInitial() {
   if (saved) {
     try {
       restoreSnapshot(JSON.parse(saved));
-      toast("前回の状態を復元しました");
+      toast("Previous session restored");
       return;
     } catch {
       localStorage.removeItem(STORAGE_KEY);
