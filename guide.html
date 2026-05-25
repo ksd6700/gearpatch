@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Guide | GearPatch</title>
+    <meta
+      name="description"
+      content="Learn how to use GearPatch, including the Library, cable labels, connector shapes, signal direction, exports, and live setup use cases."
+    />
+    <link rel="stylesheet" href="./pages.css?v=20260523b" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="page-header">
+        <a class="brand-link" href="./landing.html" aria-label="GearPatch home">
+          <span class="brand-mark">GP</span>
+          <span>
+            <span class="brand-title">GearPatch</span>
+            <span class="brand-subtitle">Stage-ready signal flow diagrams</span>
+          </span>
+        </a>
+        <nav class="page-nav" aria-label="Site navigation">
+          <a href="./landing.html">Home</a>
+          <a href="./index.html">Open App</a>
+          <a href="./privacy.html">Privacy Policy</a>
+        </nav>
+      </header>
+
+      <section class="hero">
+        <p class="eyebrow">Guide</p>
+        <h1>Turn a live rig into a diagram people can actually use.</h1>
+        <p class="lead">
+          GearPatch is a local-first diagram tool for musicians, DJs, live sound teams, and studio setups.
+          It helps you place gear, draw cables, describe terminals, show signal direction, and export a clean document for venue handoffs or rehearsal planning.
+        </p>
+      </section>
+
+      <div class="content-grid">
+        <section class="content-section">
+          <h2>How to use GearPatch</h2>
+          <p>
+            Start by choosing gear from the Library on the left side of the app. Each item is added to the canvas as a movable gear card.
+            You can drag cards around the infinite grid, use the zoom controls, pan across a large setup, and click the minimap to jump around the diagram.
+          </p>
+          <p>
+            Move the pointer close to a gear card and small connection dots appear on its edges. Drag from one of those dots to another piece of gear to create a cable.
+            GearPatch automatically places the cable endpoints on the closest sensible edges, so you do not have to manually define every input and output before drawing.
+          </p>
+          <p>
+            Select a cable to edit its details in the Inspector. You can set the terminal label at each end, connector shape, male or female end, signal direction, line style, cable color, and whether the line should be solid, dashed, or doubled for stereo pairs.
+          </p>
+          <h3>Saving and exporting</h3>
+          <p>
+            Your work is autosaved in the browser. Use the File menu to start a new document or load a saved JSON file.
+            Use the Export menu to download JSON for future editing, PNG or SVG for image use, or PDF when you need to send a printable sheet to a venue.
+          </p>
+        </section>
+
+        <section class="content-section">
+          <h2>The Library</h2>
+          <p>
+            The Library groups common live and studio gear by role. Instruments & Players includes microphones, synthesizers, keyboards, drum machines, guitars, basses, turntables, and CDJs.
+            Controllers & System includes laptop computers and MIDI controllers. Audio Interfaces & Mixers includes interfaces and mixers.
+            Effects includes effectors and pedalboards, while Amps & Speakers includes guitar amps, bass amps, power amps, speakers, and combo amps.
+          </p>
+          <p>
+            Each gear card has a Name and a Label. Use Name for the specific item or stage role, such as “Nord Lead,” “DX7,” “CDJ 1,” or “Vocal Mic.”
+            Use Label for the broad category, such as “Synth,” “CDJ,” “Microphone,” or “Mixer.” This keeps diagrams readable for people who do not know every piece of gear by model number.
+          </p>
+          <p>
+            Icons can be changed later in the Inspector. The goal is not to draw every device photorealistically; the goal is to make the signal path understandable at a glance.
+            If the Library does not include the exact object you need, start with the closest category and rename it.
+          </p>
+        </section>
+
+        <section class="content-section">
+          <h2>Cables, terminals, and connector shapes</h2>
+          <p>
+            GearPatch stores terminal information on the cable, not on the gear object. That keeps setup fast: instead of building a full port map for every device, you describe only the connections that matter for the document you are preparing.
+            Terminal badges can say things like “Audio out,” “Line in 1,” “Phone out,” “MIDI in,” “USB out,” or any custom label.
+          </p>
+          <p>
+            Connector shapes include XLR, TS, TRS, 3.5mm TS, 3.5mm TRS, 3.5mm TRRS, RCA, USB-C, USB-A, USB-B, Micro USB, LAN, HDMI, MIDI, SpeakON, and Custom.
+            You can also choose male or female for each end, so a label such as “XLR M” or “RCA F” can reveal adapter needs before anyone starts wiring the stage.
+          </p>
+          <p>
+            Line style is useful when a setup contains multiple kinds of signals. Use a black solid line for ordinary audio, a blue or green line for digital links, a dashed line for special paths, and a double line for stereo or paired connections.
+            Signal direction adds an arrow in the middle of the cable, making it easier to see what sends audio or data and what receives it.
+          </p>
+        </section>
+
+        <section class="content-section">
+          <h2>Use cases</h2>
+          <ul>
+            <li>Send a live house a stage-ready signal flow before show day.</li>
+            <li>Document CDJs, turntables, DJ mixers, interfaces, and stereo returns for a DJ set.</li>
+            <li>Explain an electronic live rig with synths, samplers, drum machines, MIDI controllers, and laptop audio.</li>
+            <li>Prepare band handoffs that show vocal mics, DI boxes, guitar amps, bass amps, monitor wedges, and returns.</li>
+            <li>Find missing cables, adapters, DI boxes, and connector gender mismatches before rehearsal or load-in.</li>
+            <li>Share the same diagram with performers, venue staff, streaming teams, support members, and production managers.</li>
+          </ul>
+          <p>
+            GearPatch is not meant to replace a full CAD system. It is meant to make the important live information visible quickly:
+            what is connected, where the signal goes, which connector is expected, and what the venue needs to prepare.
+          </p>
+        </section>
+      </div>
+
+      <footer class="page-footer">
+        <p>GearPatch is a local-first web tool. Diagrams stay in your browser unless you export or share them yourself.</p>
+      </footer>
+    </main>
+  </body>
+</html>

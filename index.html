@@ -3,19 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GearFlow</title>
-    <link rel="stylesheet" href="./styles.css?v=20260522u" />
+    <title>GearPatch</title>
+    <link rel="stylesheet" href="./styles.css?v=20260523e" />
   </head>
   <body>
     <div id="app" class="app-shell">
       <header class="topbar glass-panel">
-        <div class="brand">
-          <div class="brand-mark" aria-hidden="true">GF</div>
-          <div>
-            <h1>GearFlow</h1>
-            <p>Live signal flow document builder</p>
-          </div>
-        </div>
+        <button class="brand brand-button" id="aboutBrandBtn" type="button" aria-label="About GearPatch">
+          <span class="brand-mark" aria-hidden="true">GP</span>
+          <span>
+            <span class="brand-title">GearPatch</span>
+            <span class="brand-subtitle">Stage-ready signal flow diagrams</span>
+          </span>
+        </button>
 
         <div class="toolbar" aria-label="Editing toolbar">
           <button class="icon-button" id="undoBtn" title="Undo" aria-label="Undo">
@@ -219,7 +219,7 @@
         <div class="floating-card minimap" id="minimap" aria-label="Minimap"></div>
         <div class="floating-card zoom-control">
           <button class="icon-button tiny" id="zoomOutBtn" title="Zoom out" aria-label="Zoom out">−</button>
-          <span id="zoomReadout">100%</span>
+          <button class="zoom-readout" id="zoomReadout" title="Reset zoom to 100%" aria-label="Reset zoom to 100%">100%</button>
           <button class="icon-button tiny" id="zoomInBtn" title="Zoom in" aria-label="Zoom in">＋</button>
         </div>
         <div id="portPopover" class="port-popover glass-panel hidden"></div>
@@ -227,9 +227,9 @@
 
       <aside class="right-panel glass-panel">
         <section class="panel-section">
-          <div class="section-heading">
-            <span>Inspector</span>
-            <span class="count-pill" id="selectionCount">0 selected</span>
+          <div class="section-heading inspector-heading">
+            <span id="inspectorTitle">Inspector</span>
+            <span class="count-pill" id="selectionCount" hidden></span>
           </div>
 
           <div id="emptyInspector" class="empty-state">
@@ -276,6 +276,12 @@
           </div>
         </section>
       </aside>
+
+      <nav class="mobile-switcher glass-panel" aria-label="Mobile panels">
+        <button type="button" data-mobile-panel="library">Library</button>
+        <button type="button" data-mobile-panel="canvas" class="active">Canvas</button>
+        <button type="button" data-mobile-panel="inspector">Inspector</button>
+      </nav>
     </div>
 
     <dialog id="historyDialog" class="modal glass-panel">
@@ -340,14 +346,56 @@
       </div>
     </dialog>
 
+    <dialog id="aboutDialog" class="modal about-modal glass-panel">
+      <div class="modal-head">
+        <h2>About GearPatch</h2>
+        <button class="icon-button tiny" id="closeAboutBtn" aria-label="Close">×</button>
+      </div>
+      <div class="about-content">
+        <div class="about-hero">
+          <span class="brand-mark" aria-hidden="true">GP</span>
+          <div>
+            <strong>GearPatch</strong>
+            <span>Stage-ready signal flow diagrams · v0.1.0</span>
+          </div>
+        </div>
+        <nav class="about-links" aria-label="GearPatch content pages">
+          <a href="./landing.html" target="_blank" rel="noopener">
+            <strong>Home</strong>
+            <span>Landing page for GearPatch and its core value.</span>
+          </a>
+          <a href="./landing-ja.html" target="_blank" rel="noopener">
+            <strong>Japanese Home</strong>
+            <span>Japanese landing page for local visitors.</span>
+          </a>
+          <a href="./guide.html" target="_blank" rel="noopener">
+            <strong>Guide</strong>
+            <span>How to use GearPatch, Library, cables, and use cases.</span>
+          </a>
+          <a href="./privacy.html" target="_blank" rel="noopener">
+            <strong>Privacy Policy</strong>
+            <span>Cookie, Google AdSense, local storage, and data handling.</span>
+          </a>
+          <a href="https://www.paypal.com/paypalme/ksd6700" target="_blank" rel="noopener">
+            <strong>Support</strong>
+            <span>Support ongoing development via PayPal.</span>
+          </a>
+        </nav>
+        <section>
+          <h3>Credits</h3>
+          <p>Icons use Tabler Icons, Lucide Icons, and custom SVGs drawn for this prototype.</p>
+        </section>
+      </div>
+    </dialog>
+
     <div id="toastStack" class="toast-stack" aria-live="polite"></div>
-    <input id="fileInput" type="file" accept=".gearflow,.json,application/json" hidden />
+    <input id="fileInput" type="file" accept=".gearpatch,.gearflow,.json,application/json" hidden />
 
     <section id="printSheet" class="print-sheet" aria-hidden="true">
       <div class="print-page">
         <div class="print-header">
           <div>
-            <h2 id="printTitle">GearFlow</h2>
+            <h2 id="printTitle">GearPatch</h2>
             <p id="printMeta"></p>
           </div>
           <strong>Stage Plot / Signal Flow</strong>
@@ -377,6 +425,7 @@
       </div>
     </section>
 
-    <script src="./app.js?v=20260522p"></script>
+    <script src="./gear-icons.js?v=20260523b"></script>
+    <script src="./app.js?v=20260523d"></script>
   </body>
 </html>

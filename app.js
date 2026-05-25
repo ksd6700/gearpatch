@@ -1,9 +1,15 @@
-const STORAGE_KEY = "gearflow.document.v5";
-const HISTORY_KEY = "gearflow.versions.v5";
+const STORAGE_KEY = "gearpatch.document.v1";
+const HISTORY_KEY = "gearpatch.versions.v1";
+const LEGACY_STORAGE_KEY = "gearflow.document.v5";
+const LEGACY_HISTORY_KEY = "gearflow.versions.v5";
+const APP_NAME = "GearPatch";
+const FILE_PREFIX = "gearpatch";
+const TEMPLATE_MIME = "application/x-gearpatch-template";
 const VERSION = "0.1.0";
 const WORLD_W = 5000;
 const WORLD_H = 3500;
 const GRID_SIZE = 24;
+const MINIMAP_SCALE = 0.028;
 const HANDLE_SIDES = ["left", "right", "top", "bottom"];
 const TERMINAL_MIN_SPACING = {
   horizontal: 46,
@@ -90,9 +96,9 @@ const templates = [
   templateEntry({ type: "drum-machine", label: "Drum Machine / Sampler / Sequencer", jaLabel: "ドラムマシーン / サンプラー / シーケンサー", group: "instruments", icon: "drumMachine", defaultName: "Drum Machine", defaultLabel: "Beats", tags: ["Pads", "MIDI"], w: 222, h: 124 }),
   templateEntry({ type: "guitar", label: "Guitar", jaLabel: "ギター", group: "instruments", icon: "guitar", defaultName: "Guitar", defaultLabel: "Guitar", tags: ["Instrument", "TS"], w: 168, h: 108 }),
   templateEntry({ type: "bass", label: "Bass", jaLabel: "ベース", group: "instruments", icon: "bass", defaultName: "Bass", defaultLabel: "Bass", tags: ["Instrument", "TS"], w: 168, h: 108 }),
-  templateEntry({ type: "turntable", label: "Turntable", jaLabel: "ターンテーブル", group: "instruments", icon: "turntable", defaultName: "Turntable", defaultLabel: "DJ Gear", tags: ["RCA", "DJ"], w: 186, h: 118 }),
-  templateEntry({ type: "cdj", label: "CDJ", jaLabel: "CDJ", group: "instruments", icon: "cdj", defaultName: "CDJ", defaultLabel: "DJ Gear", tags: ["RCA", "Digital"], w: 178, h: 116 }),
-  templateEntry({ type: "laptop", label: "Laptop PC", jaLabel: "パソコン", group: "controllers", icon: "laptop", defaultName: "Laptop PC", defaultLabel: "Host", tags: ["USB", "Playback"], w: 188, h: 112 }),
+  templateEntry({ type: "turntable", label: "Turntable", jaLabel: "ターンテーブル", group: "instruments", icon: "turntable", defaultName: "Turntable", defaultLabel: "Turntable", tags: ["RCA", "DJ"], w: 186, h: 118 }),
+  templateEntry({ type: "cdj", label: "CDJ", jaLabel: "CDJ", group: "instruments", icon: "cdj", defaultName: "CDJ", defaultLabel: "CDJ", tags: ["RCA", "Digital"], w: 178, h: 116 }),
+  templateEntry({ type: "laptop", label: "Laptop PC", jaLabel: "パソコン", group: "controllers", icon: "laptop", defaultName: "Laptop PC", defaultLabel: "Laptop PC", tags: ["USB", "Playback"], w: 188, h: 112 }),
   templateEntry({ type: "midi-controller", label: "MIDI Controller", jaLabel: "MIDIコントローラー", group: "controllers", icon: "midiController", defaultName: "MIDI Controller", defaultLabel: "Controller", tags: ["MIDI", "USB"], w: 204, h: 116 }),
   templateEntry({ type: "audio-interface", label: "Audio Interface", jaLabel: "オーディオインターフェース", group: "interfaces", icon: "interface", defaultName: "Audio Interface", defaultLabel: "Audio I/O", tags: ["USB-C", "TRS"], w: 198, h: 126 }),
   templateEntry({ type: "mixer", label: "Mixer", jaLabel: "ミキサー", group: "interfaces", icon: "mixer", defaultName: "Sub Mixer", defaultLabel: "Mixer", tags: ["FOH", "Inputs"], w: 214, h: 154 }),
@@ -110,64 +116,13 @@ const templates = [
 const strokeIcon = (body, extra = "") =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${extra}>${body}</svg>`;
 
-const guitarIconBody = `<path d="M15 4l5 5"/><path d="M14 5l5 5"/><path d="M12 9l4 -4"/><path d="M7.5 12.5c-2.4 .2-4.5 2.2-4.5 4.6a3.9 3.9 0 0 0 4 3.9c2.4 0 4.3-1.8 4.6-4.1"/><path d="M9.8 14.2c1.4 .2 2.9-.1 4-1.2l4.2-4.2"/><circle cx="7" cy="17" r="1.2"/>`;
-const discIconBody = `<path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M7 12a5 5 0 0 1 5 -5" /><path d="M12 17a5 5 0 0 0 5 -5" />`;
-const deviceSpeakerIconBody = `<path d="M5 5a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2l0 -14" /><path d="M9 14a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /><path d="M12 7l0 .01" />`;
-const volumeIconBody = `<path d="M15 8a5 5 0 0 1 0 8" /><path d="M17.7 5a9 9 0 0 1 0 14" /><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5" />`;
-
-const iconSvg = {
-  mic: strokeIcon(`<path d="M9 5a3 3 0 0 1 3 -3a3 3 0 0 1 3 3v5a3 3 0 0 1 -3 3a3 3 0 0 1 -3 -3l0 -5" /><path d="M5 10a7 7 0 0 0 14 0" /><path d="M8 21l8 0" /><path d="M12 17l0 4" />`),
-  box: strokeIcon(`<path d="M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12l0 9" /><path d="M12 12l-8 -4.5" />`),
-  mixer: strokeIcon(`<path d="M4 10a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M6 4v4" /><path d="M6 12v8" /><path d="M10 16a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M12 4v10" /><path d="M12 18v2" /><path d="M16 7a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M18 4v1" /><path d="M18 9v11" />`),
-  rack: strokeIcon(`<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01"/><path d="M7 16.5h.01"/><path d="M11 7.5h6"/><path d="M11 16.5h6"/>`),
-  keys: strokeIcon(`<path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10" /><path d="M9 19v-6" /><path d="M8 5v8h2v-8" /><path d="M15 19v-6" /><path d="M14 5v8h2v-8" />`),
-  synthesizer: strokeIcon(`<path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M4 6l8 0" /><path d="M16 6l4 0" /><path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M4 12l2 0" /><path d="M10 12l10 0" /><path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M4 18l11 0" /><path d="M19 18l1 0" />`),
-  keyboard: strokeIcon(`<path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10" /><path d="M9 19v-6" /><path d="M8 5v8h2v-8" /><path d="M15 19v-6" /><path d="M14 5v8h2v-8" />`),
-  drumMachine: strokeIcon(`<path d="M4 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /><path d="M4 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /><path d="M14 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /><path d="M14 7l6 0" /><path d="M17 4l0 6" />`),
-  guitar: strokeIcon(guitarIconBody),
-  bass: strokeIcon(guitarIconBody),
-  turntable: strokeIcon(discIconBody),
-  cdj: strokeIcon(discIconBody),
-  laptop: strokeIcon(`<path d="M3 19l18 0" /><path d="M5 7a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v8a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1l0 -8" />`),
-  midiController: strokeIcon(`<path d="M2 8a2 2 0 0 1 2 -2h16a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2l0 -8" /><path d="M6 10l0 .01" /><path d="M10 10l0 .01" /><path d="M14 10l0 .01" /><path d="M18 10l0 .01" /><path d="M6 14l0 .01" /><path d="M18 14l0 .01" /><path d="M10 14l4 .01" />`),
-  interface: strokeIcon(`<path d="M3 7a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v2a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3" /><path d="M3 15a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v2a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3l0 -2" /><path d="M7 8l0 .01" /><path d="M7 16l0 .01" />`),
-  speaker: strokeIcon(volumeIconBody),
-  amp: strokeIcon(`<rect x="4" y="6" width="16" height="12" rx="2"/><path d="M7 10h10"/><path d="M7 14h2"/><path d="M12 14h2"/><path d="M17 14h.01"/><path d="M6 18v2"/><path d="M18 18v2"/>`),
-  effector: strokeIcon(`<path d="M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12l0 9" /><path d="M12 12l-8 -4.5" />`),
-  pedalboard: strokeIcon(`<path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M2 12a6 6 0 0 1 6 -6h8a6 6 0 0 1 6 6a6 6 0 0 1 -6 6h-8a6 6 0 0 1 -6 -6" />`),
-  guitarAmp: strokeIcon(deviceSpeakerIconBody),
-  bassAmp: strokeIcon(deviceSpeakerIconBody),
-  powerAmp: strokeIcon(`<path d="M5 6a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1l0 -12" /><path d="M9 9h6v6h-6l0 -6" /><path d="M3 10h2" /><path d="M3 14h2" /><path d="M10 3v2" /><path d="M14 3v2" /><path d="M21 10h-2" /><path d="M21 14h-2" /><path d="M14 21v-2" /><path d="M10 21v-2" />`),
-  speakerCab: strokeIcon(volumeIconBody),
-  comboAmp: strokeIcon(`<path d="M4 6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2l0 -12" /><path d="M14 6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2l0 -6" />`),
+const iconPaths = window.GEARPATCH_GEAR_ICON_PATHS || {};
+const ICON_OPTIONS = window.GEARPATCH_ICON_OPTIONS || [];
+const gearIcon = (id) => {
+  const src = iconPaths[id] || iconPaths.box || "";
+  if (!src) return "";
+  return `<span class="gear-icon-glyph" style="--gear-icon-url: url('${escapeAttr(src)}')" aria-hidden="true"></span>`;
 };
-
-const ICON_OPTIONS = [
-  { id: "mic", label: "Microphone" },
-  { id: "synthesizer", label: "Synthesizer" },
-  { id: "keyboard", label: "Keyboard" },
-  { id: "drumMachine", label: "Drum Machine" },
-  { id: "guitar", label: "Guitar" },
-  { id: "bass", label: "Bass" },
-  { id: "turntable", label: "Turntable" },
-  { id: "cdj", label: "CDJ" },
-  { id: "laptop", label: "Laptop PC" },
-  { id: "midiController", label: "MIDI Controller" },
-  { id: "interface", label: "Audio Interface" },
-  { id: "mixer", label: "Mixer" },
-  { id: "effector", label: "Effector" },
-  { id: "pedalboard", label: "Pedalboard" },
-  { id: "guitarAmp", label: "Guitar Amplifier" },
-  { id: "bassAmp", label: "Bass Amplifier" },
-  { id: "powerAmp", label: "Amplifier" },
-  { id: "speakerCab", label: "Speaker" },
-  { id: "comboAmp", label: "Combo Amplifier" },
-  { id: "box", label: "DI / Box" },
-  { id: "rack", label: "Stagebox" },
-  { id: "keys", label: "Keys" },
-  { id: "speaker", label: "Monitor" },
-  { id: "amp", label: "Amp" },
-];
 
 const portSvg = {
   "xlr-m": strokeIcon(`<circle cx="12" cy="12" r="7"/><circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="15" r="1" fill="currentColor" stroke="none"/><path d="M12 5v2"/>`),
@@ -225,11 +180,14 @@ const dom = {
   saveStatus: $("#saveStatus"),
   fileInput: $("#fileInput"),
   toastStack: $("#toastStack"),
+  mobilePanelButtons: $$("[data-mobile-panel]"),
+  aboutDialog: $("#aboutDialog"),
   startDialog: $("#startDialog"),
   documentDialog: $("#documentDialog"),
   inputListDialog: $("#inputListDialog"),
   historyDialog: $("#historyDialog"),
   historyList: $("#historyList"),
+  inspectorTitle: $("#inspectorTitle"),
   selectionCount: $("#selectionCount"),
   emptyInspector: $("#emptyInspector"),
   nodeInspector: $("#nodeInspector"),
@@ -276,8 +234,8 @@ function exportData() {
     viewport: clone(state.viewport),
     metadata: {
       notes: state.notes,
-      app: "GearFlow",
-      format: "gearflow-json",
+      app: APP_NAME,
+      format: "gearpatch-json",
     },
   };
 }
@@ -355,7 +313,7 @@ function addVersion(data) {
 
 function readVersions() {
   try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) || localStorage.getItem(LEGACY_HISTORY_KEY) || "[]");
   } catch {
     return [];
   }
@@ -402,6 +360,10 @@ function addNode(template, point) {
 
 function snapToGrid(value) {
   return Math.round(value / GRID_SIZE) * GRID_SIZE;
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function snapPoint(point) {
@@ -484,14 +446,14 @@ function renderLibrary() {
       item.draggable = true;
       item.dataset.template = template.type;
       item.innerHTML = `
-        <span class="library-icon">${iconSvg[template.icon]}</span>
+        <span class="library-icon">${gearIcon(template.icon)}</span>
         <span>
           <strong>${escapeHtml(template.label)}</strong>
           <span>${escapeHtml(template.jaLabel)}</span>
         </span>
       `;
       item.addEventListener("dragstart", (event) => {
-        event.dataTransfer.setData("application/x-gearflow-template", template.type);
+        event.dataTransfer.setData(TEMPLATE_MIME, template.type);
         event.dataTransfer.effectAllowed = "copy";
       });
       item.addEventListener("click", () => {
@@ -500,6 +462,7 @@ function renderLibrary() {
           dom.canvasFrame.getBoundingClientRect().top + dom.canvasFrame.clientHeight / 2,
         );
         addNode(template, { x: center.x - template.w / 2, y: center.y - template.h / 2 });
+        setMobilePanel("canvas");
       });
       section.appendChild(item);
     });
@@ -538,6 +501,20 @@ function resetViewportToFieldCenter(scale = 1) {
     y: height / 2 - (WORLD_H / 2) * scale,
     scale,
   };
+}
+
+function centerViewportOnWorldPoint(point) {
+  const rect = dom.canvasFrame.getBoundingClientRect();
+  const width = rect.width || dom.canvasFrame.clientWidth || window.innerWidth;
+  const height = rect.height || dom.canvasFrame.clientHeight || window.innerHeight;
+  const x = clamp(point.x, 0, WORLD_W);
+  const y = clamp(point.y, 0, WORLD_H);
+  state.viewport.x = width / 2 - x * state.viewport.scale;
+  state.viewport.y = height / 2 - y * state.viewport.scale;
+  renderWorldTransform();
+  renderMinimap();
+  renderPortPopover();
+  scheduleAutosave("Autosaved");
 }
 
 function resetTransientState() {
@@ -586,7 +563,7 @@ function renderNodes() {
     el.style.height = `${node.h}px`;
     el.innerHTML = `
       <div class="node-header">
-        <div class="node-icon">${iconSvg[node.icon] || iconSvg.box}</div>
+        <div class="node-icon">${gearIcon(node.icon)}</div>
         <div>
           <div class="node-title">${escapeHtml(displayTitle)}</div>
           ${displaySubtitle ? `<div class="node-subtitle">${escapeHtml(displaySubtitle)}</div>` : ""}
@@ -679,7 +656,11 @@ function renderEdges() {
 function renderInspector() {
   const selectedNodes = state.nodes.filter((node) => state.selected.has(node.id));
   const selectedEdge = getSelectedEdge();
-  dom.selectionCount.textContent = selectedEdge ? "1 cable" : `${selectedNodes.length} selected`;
+  const selectedName = selectedNodes[0] ? gearDisplayName(selectedNodes[0]) : selectedEdge ? "Cable" : "Inspector";
+  const selectedCount = selectedNodes.length > 1 ? `（${selectedNodes.length}）` : "";
+  dom.inspectorTitle.textContent = selectedName;
+  dom.selectionCount.textContent = selectedCount;
+  dom.selectionCount.hidden = !selectedCount;
   const single = selectedNodes.length === 1 ? selectedNodes[0] : null;
   dom.emptyInspector.classList.toggle("hidden", !!single || !!selectedEdge);
   dom.nodeInspector.classList.toggle("hidden", !single);
@@ -713,7 +694,7 @@ function renderInspector() {
   dom.nodeIconPicker.innerHTML = ICON_OPTIONS.map(
     (icon) => `
       <button class="icon-choice ${single.icon === icon.id ? "active" : ""}" data-node-icon="${icon.id}" title="${escapeAttr(icon.label)}" aria-label="${escapeAttr(icon.label)}">
-        ${iconSvg[icon.id] || iconSvg.box}
+        ${gearIcon(icon.id)}
       </button>
     `,
   ).join("");
@@ -865,24 +846,33 @@ function connectorShapeOptionsMarkup(shapeValue, isCustom = false) {
 
 function renderMinimap() {
   dom.minimap.innerHTML = "";
-  const scale = 0.028;
   state.nodes.forEach((node) => {
     const el = document.createElement("span");
     el.className = "mini-node";
-    el.style.left = `${node.x * scale}px`;
-    el.style.top = `${node.y * scale}px`;
-    el.style.width = `${Math.max(3, node.w * scale)}px`;
-    el.style.height = `${Math.max(3, node.h * scale)}px`;
+    el.style.left = `${node.x * MINIMAP_SCALE}px`;
+    el.style.top = `${node.y * MINIMAP_SCALE}px`;
+    el.style.width = `${Math.max(3, node.w * MINIMAP_SCALE)}px`;
+    el.style.height = `${Math.max(3, node.h * MINIMAP_SCALE)}px`;
     dom.minimap.appendChild(el);
   });
   const rect = dom.canvasFrame.getBoundingClientRect();
   const view = document.createElement("span");
   view.className = "mini-view";
-  view.style.left = `${(-state.viewport.x / state.viewport.scale) * scale}px`;
-  view.style.top = `${(-state.viewport.y / state.viewport.scale) * scale}px`;
-  view.style.width = `${(rect.width / state.viewport.scale) * scale}px`;
-  view.style.height = `${(rect.height / state.viewport.scale) * scale}px`;
+  view.style.left = `${(-state.viewport.x / state.viewport.scale) * MINIMAP_SCALE}px`;
+  view.style.top = `${(-state.viewport.y / state.viewport.scale) * MINIMAP_SCALE}px`;
+  view.style.width = `${(rect.width / state.viewport.scale) * MINIMAP_SCALE}px`;
+  view.style.height = `${(rect.height / state.viewport.scale) * MINIMAP_SCALE}px`;
   dom.minimap.appendChild(view);
+}
+
+function jumpToMinimapPoint(event) {
+  if (event.button !== undefined && event.button !== 0) return;
+  event.preventDefault();
+  const rect = dom.minimap.getBoundingClientRect();
+  centerViewportOnWorldPoint({
+    x: (event.clientX - rect.left) / MINIMAP_SCALE,
+    y: (event.clientY - rect.top) / MINIMAP_SCALE,
+  });
 }
 
 function makeInputRows() {
@@ -1278,6 +1268,11 @@ function setZoom(nextScale, anchorClient) {
   renderMinimap();
   renderPortPopover();
   scheduleAutosave("Autosaved");
+}
+
+function resetZoomTo100() {
+  const rect = dom.canvasFrame.getBoundingClientRect();
+  setZoom(1, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
 }
 
 function getNode(id) {
@@ -2083,17 +2078,21 @@ function filename(ext, suffix = "") {
   const date = new Date().toISOString().slice(0, 10);
   const safe = state.name.replace(/[\\/:*?"<>|\s]+/g, "_").replace(/^_+|_+$/g, "") || "project";
   const suffixPart = suffix ? `_${suffix}` : "";
-  return `gearflow_${safe}${suffixPart}_${date}.${ext}`;
+  return `${FILE_PREFIX}_${safe}${suffixPart}_${date}.${ext}`;
 }
 
 function downloadText(text, ext, type, suffix = "") {
   const blob = new Blob([text], { type });
+  downloadBlob(blob, ext, suffix);
+}
+
+function downloadBlob(blob, ext, suffix = "") {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = filename(ext, suffix);
   link.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1200);
 }
 
 function downloadJson() {
@@ -2105,7 +2104,7 @@ function downloadJson() {
 function buildExportSvg(options = {}) {
   const includeNodes = options.includeNodes !== false;
   const bounds = contentBounds();
-  const pad = 80;
+  const pad = options.pad ?? 80;
   const x = bounds.x - pad;
   const y = bounds.y - pad;
   const w = bounds.w + pad * 2;
@@ -2194,12 +2193,172 @@ async function downloadPng() {
   }, "image/png");
 }
 
+function truncateText(value, length = 52) {
+  const text = String(value || "");
+  return text.length > length ? `${text.slice(0, length - 1)}...` : text;
+}
+
+function buildInputListSvg(rows) {
+  const width = 1600;
+  const rowH = 54;
+  const tableX = 44;
+  const tableY = 168;
+  const tableW = width - tableX * 2;
+  const height = Math.max(1000, tableY + 82 + Math.max(1, rows.length) * rowH);
+  const columns = [
+    { label: "Ch", x: tableX, w: 70 },
+    { label: "Source", x: tableX + 70, w: 360 },
+    { label: "Connector", x: tableX + 430, w: 500 },
+    { label: "To", x: tableX + 930, w: 300 },
+    { label: "Notes", x: tableX + 1230, w: tableW - 1230 },
+  ];
+  const bodyRows = rows.length
+    ? rows
+        .map((row, index) => {
+          const y = tableY + 46 + index * rowH;
+          return `
+            <rect x="${tableX}" y="${y}" width="${tableW}" height="${rowH}" fill="${index % 2 ? "#ffffff" : "#f7f7f4"}" stroke="#111" stroke-width="1"/>
+            <text x="${columns[0].x + 14}" y="${y + 33}" font-size="18" font-weight="800">${escapeHtml(row.ch)}</text>
+            <text x="${columns[1].x + 14}" y="${y + 33}" font-size="18" font-weight="800">${escapeHtml(truncateText(row.source, 34))}</text>
+            <text x="${columns[2].x + 14}" y="${y + 33}" font-size="16">${escapeHtml(truncateText(row.connector, 48))}</text>
+            <text x="${columns[3].x + 14}" y="${y + 33}" font-size="16">${escapeHtml(truncateText(row.to, 30))}</text>
+            <text x="${columns[4].x + 14}" y="${y + 33}" font-size="16">${escapeHtml(truncateText(row.notes, 28))}</text>
+          `;
+        })
+        .join("")
+    : `<text x="${tableX}" y="${tableY + 92}" font-size="22" fill="#666">No cables connected yet.</text>`;
+
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+      <rect x="0" y="0" width="${width}" height="${height}" fill="#ffffff"/>
+      <text x="44" y="66" font-size="34" font-weight="900">Input List</text>
+      <text x="44" y="104" font-size="18" fill="#666">${escapeHtml(state.name || APP_NAME)} · ${escapeHtml(new Date().toLocaleString("en-US"))}</text>
+      <text x="44" y="132" font-size="18" fill="#666">${escapeHtml(truncateText(state.notes || "No notes", 120))}</text>
+      <rect x="${tableX}" y="${tableY}" width="${tableW}" height="46" fill="#111"/>
+      ${columns.map((col) => `<text x="${col.x + 14}" y="${tableY + 33}" font-size="19" font-weight="800" fill="#fff">${escapeHtml(col.label)}</text>`).join("")}
+      ${columns.slice(1).map((col) => `<path d="M${col.x} ${tableY}v${46 + Math.max(1, rows.length) * rowH}" stroke="#111" stroke-width="1"/>`).join("")}
+      ${bodyRows}
+    </svg>
+  `.trim();
+}
+
+function bytesToBinaryString(bytes) {
+  const chunks = [];
+  for (let index = 0; index < bytes.length; index += 8192) {
+    chunks.push(String.fromCharCode(...bytes.subarray(index, index + 8192)));
+  }
+  return chunks.join("");
+}
+
+function binaryStringToBytes(binary) {
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index) & 255;
+  return bytes;
+}
+
+function pdfStream(dict, data) {
+  return `<< ${dict} /Length ${data.length} >>\nstream\n${data}\nendstream`;
+}
+
+function buildPdf(objects, rootId) {
+  let body = "%PDF-1.4\n%\xE2\xE3\xCF\xD3\n";
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets[index + 1] = body.length;
+    body += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xrefOffset = body.length;
+  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (let index = 1; index <= objects.length; index += 1) {
+    body += `${String(offsets[index]).padStart(10, "0")} 00000 n \n`;
+  }
+  body += `trailer\n<< /Size ${objects.length + 1} /Root ${rootId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return new Blob([binaryStringToBytes(body)], { type: "application/pdf" });
+}
+
+function buildPdfFromImages(images) {
+  const pageW = 841.89;
+  const pageH = 595.28;
+  const margin = 11.34;
+  const objects = [];
+  const addObject = (content = "") => {
+    objects.push(content);
+    return objects.length;
+  };
+  const pagesId = addObject();
+  const catalogId = addObject();
+  const pageIds = [];
+  images.forEach((image, index) => {
+    const imageId = addObject(
+      pdfStream(
+        `/Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode`,
+        image.binary,
+      ),
+    );
+    const usableW = pageW - margin * 2;
+    const usableH = pageH - margin * 2;
+    const scale = Math.min(usableW / image.width, usableH / image.height);
+    const drawW = image.width * scale;
+    const drawH = image.height * scale;
+    const x = (pageW - drawW) / 2;
+    const y = (pageH - drawH) / 2;
+    const content = `q\n${drawW.toFixed(2)} 0 0 ${drawH.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm\n/Im${index + 1} Do\nQ`;
+    const contentId = addObject(pdfStream("", content));
+    const pageId = addObject(
+      `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /XObject << /Im${index + 1} ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>`,
+    );
+    pageIds.push(pageId);
+  });
+  objects[pagesId - 1] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageIds.length} >>`;
+  objects[catalogId - 1] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
+  return buildPdf(objects, catalogId);
+}
+
+async function svgToJpegImage(svg, maxSide = 3600) {
+  const image = new Image();
+  const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+  image.src = svgUrl;
+  await image.decode();
+  const scale = Math.max(1, Math.min(2.5, maxSide / Math.max(image.width, image.height)));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(image.width * scale);
+  canvas.height = Math.round(image.height * scale);
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.scale(scale, scale);
+  ctx.drawImage(image, 0, 0);
+  URL.revokeObjectURL(svgUrl);
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.94));
+  if (!blob) throw new Error("Could not render PDF image");
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  return {
+    binary: bytesToBinaryString(bytes),
+    width: canvas.width,
+    height: canvas.height,
+  };
+}
+
+async function downloadPdf() {
+  try {
+    const rows = makeInputRows();
+    const diagramImage = await svgToJpegImage(buildExportSvg({ pad: 24 }), 3800);
+    const inputListImage = await svgToJpegImage(buildInputListSvg(rows), 2800);
+    const pdf = buildPdfFromImages([diagramImage, inputListImage]);
+    downloadBlob(pdf, "pdf");
+    toast("PDF downloaded");
+  } catch (error) {
+    console.error(error);
+    toast("Could not generate PDF");
+  }
+}
+
 function preparePrint() {
   const rows = makeInputRows();
-  dom.printTitle.textContent = state.name || "GearFlow";
+  dom.printTitle.textContent = state.name || APP_NAME;
   dom.printMeta.textContent = `Generated ${new Date().toLocaleString("en-US")} · ${state.nodes.length} gear · ${state.edges.length} cables`;
   dom.printNotes.textContent = state.notes || "No notes";
-  dom.printDiagram.innerHTML = buildExportSvg();
+  dom.printDiagram.innerHTML = buildExportSvg({ pad: 24 });
   dom.printInputRows.innerHTML = rows
     .map(
       (row) => `
@@ -2273,7 +2432,7 @@ function copySelection() {
   }
   const edges = state.edges.filter((edge) => ids.has(edge.from.nodeId) && ids.has(edge.to.nodeId));
   const payload = {
-    format: "gearflow.selection",
+    format: "gearpatch.selection",
     version: VERSION,
     nodes: clone(nodes),
     edges: clone(edges),
@@ -2291,7 +2450,7 @@ async function pasteSelection() {
   if (!payload && navigator.clipboard?.readText) {
     try {
       const parsed = JSON.parse(await navigator.clipboard.readText());
-      if (parsed?.format === "gearflow.selection") payload = parsed;
+      if (parsed?.format === "gearpatch.selection" || parsed?.format === "gearflow.selection") payload = parsed;
     } catch {
       payload = null;
     }
@@ -2406,6 +2565,10 @@ function toggleMenu(wrap) {
   const menu = wrap.querySelector("[data-menu]");
   const button = wrap.querySelector("[data-menu-button]");
   const open = menu.classList.contains("hidden");
+  if (open && window.matchMedia("(max-width: 820px)").matches) {
+    const topbar = $(".topbar").getBoundingClientRect();
+    document.documentElement.style.setProperty("--mobile-menu-top", `${Math.round(topbar.bottom + 6)}px`);
+  }
   closeMenus(open ? wrap : null);
   menu.classList.toggle("hidden", !open);
   button.setAttribute("aria-expanded", String(open));
@@ -2421,6 +2584,11 @@ function showInputListDialog() {
   closeMenus();
   renderInputList();
   dom.inputListDialog.showModal();
+}
+
+function showAboutDialog() {
+  closeMenus();
+  if (!dom.aboutDialog.open) dom.aboutDialog.showModal();
 }
 
 function autoPlaceAllEdges() {
@@ -2445,6 +2613,19 @@ function showStartDialog() {
 function closeStartDialog() {
   state.pendingNewConfirmed = false;
   if (dom.startDialog.open) dom.startDialog.close();
+}
+
+function closeAboutDialog() {
+  if (dom.aboutDialog.open) dom.aboutDialog.close();
+}
+
+function setMobilePanel(panel) {
+  const next = ["library", "inspector"].includes(panel) ? panel : "canvas";
+  document.body.classList.toggle("mobile-panel-library", next === "library");
+  document.body.classList.toggle("mobile-panel-inspector", next === "inspector");
+  dom.mobilePanelButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.mobilePanel === next);
+  });
 }
 
 function startBlankFlow() {
@@ -2554,10 +2735,10 @@ function seedBandTemplate() {
 }
 
 function seedDjTemplate() {
-  const cdjA = templateNode("cdj", -780, -330, { title: "CDJ 1", subtitle: "DJ Gear" });
-  const cdjB = templateNode("cdj", -780, -110, { title: "CDJ 2", subtitle: "DJ Gear" });
-  const turntable = templateNode("turntable", -780, 120, { title: "Turntable", subtitle: "DJ Gear" });
-  const laptop = templateNode("laptop", -780, 360, { title: "Laptop PC", subtitle: "Host" });
+  const cdjA = templateNode("cdj", -780, -330, { title: "CDJ 1", subtitle: "CDJ" });
+  const cdjB = templateNode("cdj", -780, -110, { title: "CDJ 2", subtitle: "CDJ" });
+  const turntable = templateNode("turntable", -780, 120, { title: "Turntable", subtitle: "Turntable" });
+  const laptop = templateNode("laptop", -780, 360, { title: "Laptop PC", subtitle: "Laptop PC" });
   const audioInterface = templateNode("audio-interface", -420, 340, { title: "Audio Interface", subtitle: "Audio I/O" });
   const mixer = templateNode("mixer", -80, -40, { title: "Sub Mixer", subtitle: "Mixer" });
   const speakerL = templateNode("speaker", 420, -220, { title: "Main Speaker L", subtitle: "Speaker" });
@@ -2595,8 +2776,15 @@ function applyTemplate(kind) {
 }
 
 function bindEvents() {
+  $("#aboutBrandBtn").addEventListener("click", showAboutDialog);
+  dom.mobilePanelButtons.forEach((button) => {
+    button.addEventListener("click", () => setMobilePanel(button.dataset.mobilePanel));
+  });
   dom.librarySearch.addEventListener("input", renderLibrary);
   dom.canvasFrame.addEventListener("pointerdown", startPan);
+  $(".toolbar").addEventListener("pointerup", (event) => {
+    event.target.closest("button")?.blur();
+  });
   dom.edgeLayer.addEventListener("click", (event) => {
     if (event.target.classList.contains("patch-cable-hit")) return;
     if (!selectNearestEdgeAt(event.clientX, event.clientY)) clearSelection();
@@ -2611,7 +2799,7 @@ function bindEvents() {
   }, { passive: false });
 
   dom.canvasFrame.addEventListener("dragover", (event) => {
-    if (event.dataTransfer.types.includes("application/x-gearflow-template")) {
+    if (event.dataTransfer.types.includes(TEMPLATE_MIME)) {
       event.preventDefault();
       document.body.classList.add("drop-active");
     }
@@ -2619,7 +2807,7 @@ function bindEvents() {
   dom.canvasFrame.addEventListener("dragleave", () => document.body.classList.remove("drop-active"));
   dom.canvasFrame.addEventListener("drop", (event) => {
     document.body.classList.remove("drop-active");
-    const type = event.dataTransfer.getData("application/x-gearflow-template");
+    const type = event.dataTransfer.getData(TEMPLATE_MIME);
     if (!type) return;
     event.preventDefault();
     const template = templates.find((item) => item.type === type);
@@ -2666,8 +2854,7 @@ function bindEvents() {
   });
   $("#pdfMenuItem").addEventListener("click", () => {
     closeMenus();
-    preparePrint();
-    window.print();
+    downloadPdf();
   });
   $("#documentMenuItem").addEventListener("click", showDocumentDialog);
   $("#inputListMenuItem").addEventListener("click", showInputListDialog);
@@ -2677,6 +2864,7 @@ function bindEvents() {
   $("#closeDocumentBtn").addEventListener("click", () => dom.documentDialog.close());
   $("#closeInputListBtn").addEventListener("click", () => dom.inputListDialog.close());
   $("#closeStartBtn").addEventListener("click", closeStartDialog);
+  $("#closeAboutBtn").addEventListener("click", closeAboutDialog);
   $("#startBlankBtn").addEventListener("click", startBlankFlow);
   $("#startBandBtn").addEventListener("click", () => applyTemplate("band"));
   $("#startDjBtn").addEventListener("click", () => applyTemplate("dj"));
@@ -2688,6 +2876,8 @@ function bindEvents() {
     const rect = dom.canvasFrame.getBoundingClientRect();
     setZoom(state.viewport.scale - 0.12, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   });
+  dom.zoomReadout.addEventListener("click", resetZoomTo100);
+  dom.minimap.addEventListener("pointerdown", jumpToMinimapPoint);
   $("#addBlankBtn").addEventListener("click", () =>
     addNode(
       {
@@ -2764,6 +2954,8 @@ function bindEvents() {
     } else if (event.key === "Escape") {
       closeMenus();
       closeStartDialog();
+      closeAboutDialog();
+      setMobilePanel("canvas");
       state.connecting = null;
       state.portDrag = null;
       state.selectedEdge = null;
@@ -3006,14 +3198,15 @@ function handlePortInspectorClick(event) {
 }
 
 function loadInitial() {
-  const saved = localStorage.getItem(STORAGE_KEY);
+  const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
+  const savedKey = localStorage.getItem(STORAGE_KEY) ? STORAGE_KEY : LEGACY_STORAGE_KEY;
   if (saved) {
     try {
       restoreSnapshot(JSON.parse(saved));
       toast("Previous session restored");
       return;
     } catch {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(savedKey);
     }
   }
   pushHistory();

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GearPatch | ライブ機材の配線図を、会場に伝わる資料へ</title>
+    <meta
+      name="description"
+      content="GearPatchは、ミュージシャン、DJ、PA、スタジオ向けにライブ機材の信号経路と配線図を作成できるローカルファーストなWebアプリです。"
+    />
+    <link rel="stylesheet" href="./landing.css?v=20260526a" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand-link" href="./landing-ja.html" aria-label="GearPatch Japanese landing page">
+        <span class="brand-mark" aria-hidden="true">GP</span>
+        <span>
+          <span class="brand-title">GearPatch</span>
+          <span class="brand-subtitle">Stage-ready signal flow diagrams</span>
+        </span>
+      </a>
+      <nav class="site-nav" aria-label="Site navigation">
+        <a href="./landing.html">English</a>
+        <a href="./guide.html">Guide</a>
+        <a href="./privacy.html">Privacy</a>
+        <a class="nav-primary" href="./index.html">Open App</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-label="GearPatch overview">
+        <div class="signal-scene" aria-hidden="true">
+          <span class="scene-cable cable-a"></span>
+          <span class="scene-cable cable-b"></span>
+          <span class="scene-cable cable-c"></span>
+          <span class="scene-cable cable-d"></span>
+          <div class="scene-node node-mic">
+            <span>Vocal Mic</span>
+            <strong>Microphone</strong>
+          </div>
+          <div class="scene-node node-di">
+            <span>DI L</span>
+            <strong>RCA to XLR</strong>
+          </div>
+          <div class="scene-node node-mixer">
+            <span>FOH Mixer</span>
+            <strong>House console</strong>
+          </div>
+          <div class="scene-node node-laptop">
+            <span>Laptop PC</span>
+            <strong>Host</strong>
+          </div>
+          <div class="scene-badge badge-a">Audio out</div>
+          <div class="scene-badge badge-b">XLR M</div>
+          <div class="scene-badge badge-c">USB-C F</div>
+          <div class="scene-badge badge-d">Line in 1</div>
+        </div>
+        <div class="hero-copy">
+          <p class="eyebrow">GearPatch</p>
+          <h1>ライブ機材の配線図を、会場に伝わる資料へ。</h1>
+          <p>
+            GearPatchは、ライブPA、DJセット、ホームスタジオ、配信環境の信号経路をすばやく整理するための作図ツールです。
+            機材を置き、ケーブルをつなぎ、端子名や信号方向を整えて、PDF、PNG、SVG、JSONとして書き出せます。
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="./index.html">Open App</a>
+            <a class="button secondary" href="./guide.html">Read Guide</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-band">
+        <div class="section-inner">
+          <p class="eyebrow">Why it helps</p>
+          <h2>仕込み前の「たぶんこう」を減らす。</h2>
+          <p class="section-lead">
+            GearPatchは、ステージプロット、インプットリスト、ケーブル確認表のちょうど間にある情報を、ひとつの図にまとめるためのツールです。
+            演奏者にも、PAにも、会場スタッフにも、同じ図で接続意図を共有できます。
+          </p>
+          <div class="feature-grid">
+            <article>
+              <h3>素早くケーブルを描ける</h3>
+              <p>機材にマウスを近づけて、丸い接続ポイントから別の機材へドラッグするだけ。すべての端子を事前登録する必要はありません。</p>
+            </article>
+            <article>
+              <h3>端子情報が読みやすい</h3>
+              <p>Audio out、Line in、XLR M、RCA F、USB-C、MIDI、SpeakONなど、ケーブル両端の役割と形状を分けて表示できます。</p>
+            </article>
+            <article>
+              <h3>信号の種類を見分けられる</h3>
+              <p>色、点線、二重線、矢印で、アナログ音声、デジタル、MIDI、スピーカーライン、ステレオペアを整理できます。</p>
+            </article>
+            <article>
+              <h3>ローカルファースト</h3>
+              <p>自動保存と履歴はブラウザ内に保存されます。共有したいときだけ、自分でファイルを書き出せます。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-band muted-band">
+        <div class="section-inner split-layout">
+          <div>
+            <p class="eyebrow">Workflow</p>
+            <h2>構成メモから、提出できる配線図へ。</h2>
+          </div>
+          <ol class="steps">
+            <li><strong>機材を追加。</strong> マイク、シンセ、ミキサー、オーディオインターフェース、DJ機材、アンプ、スピーカーをLibraryから選びます。</li>
+            <li><strong>ケーブルを接続。</strong> 機材同士の一番近い辺からケーブルを引き、見やすい位置に端子バッジを表示します。</li>
+            <li><strong>信号を説明。</strong> 端子名、端子形状、オス/メス、線種、色、信号方向を設定します。</li>
+            <li><strong>資料として書き出し。</strong> 会場提出にはPDF、再編集にはJSON、共有画像にはPNGやSVGを使えます。</li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section-band">
+        <div class="section-inner">
+          <p class="eyebrow">Use cases</p>
+          <h2>ライブ現場で本当に使う場面に。</h2>
+          <div class="use-case-list">
+            <article>
+              <h3>ライブハウスへの事前共有</h3>
+              <p>ステージボックスへ入る信号、モニター返し、必要な変換アダプターを、当日前にわかりやすく共有できます。</p>
+            </article>
+            <article>
+              <h3>DJ / 電子音楽セット</h3>
+              <p>CDJ、ターンテーブル、DJミキサー、オーディオインターフェース、PC、MIDI機材の接続を一枚に整理できます。</p>
+            </article>
+            <article>
+              <h3>バンドとバックライン</h3>
+              <p>ボーカルマイク、DI、ギターアンプ、ベースアンプ、モニター、メインスピーカーの関係をスタッフと共有できます。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-band support-band">
+        <div class="section-inner support-panel">
+          <div>
+            <p class="eyebrow">Support</p>
+            <h2>無料で使えて、応援もできます。</h2>
+            <p class="section-lead">
+              GearPatchは無料で使えます。仕込み前の確認や会場共有に役立ったら、PayPalで開発を応援してもらえると嬉しいです。
+            </p>
+          </div>
+          <a class="button primary" href="https://www.paypal.com/paypalme/ksd6700" target="_blank" rel="noopener">PayPalで応援する</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>GearPatch is a local-first web tool for signal flow documents.</p>
+      <nav aria-label="Footer navigation">
+        <a href="./landing.html">English</a>
+        <a href="./index.html">Open App</a>
+        <a href="./guide.html">Guide</a>
+        <a href="./privacy.html">Privacy Policy</a>
+        <a href="https://www.paypal.com/paypalme/ksd6700" target="_blank" rel="noopener">Support</a>
+      </nav>
+    </footer>
+  </body>
+</html>

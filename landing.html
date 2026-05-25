@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GearPatch | Stage-ready signal flow diagrams</title>
+    <meta
+      name="description"
+      content="GearPatch is a local-first web app for drawing stage-ready signal flow diagrams for musicians, DJs, live sound teams, and studios."
+    />
+    <link rel="stylesheet" href="./landing.css?v=20260526a" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand-link" href="./landing.html" aria-label="GearPatch landing page">
+        <span class="brand-mark" aria-hidden="true">GP</span>
+        <span>
+          <span class="brand-title">GearPatch</span>
+          <span class="brand-subtitle">Stage-ready signal flow diagrams</span>
+        </span>
+      </a>
+      <nav class="site-nav" aria-label="Site navigation">
+        <a href="./landing-ja.html">日本語</a>
+        <a href="./guide.html">Guide</a>
+        <a href="./privacy.html">Privacy</a>
+        <a class="nav-primary" href="./index.html">Open App</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-label="GearPatch overview">
+        <div class="signal-scene" aria-hidden="true">
+          <span class="scene-cable cable-a"></span>
+          <span class="scene-cable cable-b"></span>
+          <span class="scene-cable cable-c"></span>
+          <span class="scene-cable cable-d"></span>
+          <div class="scene-node node-mic">
+            <span>Vocal Mic</span>
+            <strong>Microphone</strong>
+          </div>
+          <div class="scene-node node-di">
+            <span>DI L</span>
+            <strong>RCA to XLR</strong>
+          </div>
+          <div class="scene-node node-mixer">
+            <span>FOH Mixer</span>
+            <strong>House console</strong>
+          </div>
+          <div class="scene-node node-laptop">
+            <span>Laptop PC</span>
+            <strong>Host</strong>
+          </div>
+          <div class="scene-badge badge-a">Audio out</div>
+          <div class="scene-badge badge-b">XLR M</div>
+          <div class="scene-badge badge-c">USB-C F</div>
+          <div class="scene-badge badge-d">Line in 1</div>
+        </div>
+        <div class="hero-copy">
+          <p class="eyebrow">GearPatch</p>
+          <h1>Stage-ready signal flow diagrams.</h1>
+          <p>
+            Build clear, printable wiring diagrams for live sound, DJ setups, home studios, and venue handoffs.
+            Drag gear onto the canvas, connect cables from the nearest edge, label terminals, and export the result as PDF, PNG, SVG, or JSON.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="./index.html">Open App</a>
+            <a class="button secondary" href="./guide.html">Read Guide</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-band">
+        <div class="section-inner">
+          <p class="eyebrow">Why it helps</p>
+          <h2>Less guessing before load-in.</h2>
+          <p class="section-lead">
+            GearPatch is made for the messy middle between a stage plot, an input list, and a cable checklist.
+            It keeps the diagram visual enough for performers and detailed enough for engineers.
+          </p>
+          <div class="feature-grid">
+            <article>
+              <h3>Fast cable drawing</h3>
+              <p>Hover over gear, drag from the connection dot, and attach the cable to another device without prebuilding every port.</p>
+            </article>
+            <article>
+              <h3>Readable terminal badges</h3>
+              <p>Show the role, connector shape, and gender at each end: Audio out, Line in, XLR M, RCA F, USB-C, MIDI, SpeakON, or a custom label.</p>
+            </article>
+            <article>
+              <h3>Signal-aware lines</h3>
+              <p>Use color, dashed lines, double lines, and direction arrows to separate analog audio, digital links, MIDI, speaker lines, or stereo pairs.</p>
+            </article>
+            <article>
+              <h3>Local-first by default</h3>
+              <p>Autosave and history live in the browser. You decide when to export or share a file.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-band muted-band">
+        <div class="section-inner split-layout">
+          <div>
+            <p class="eyebrow">Workflow</p>
+            <h2>From setup idea to venue handoff.</h2>
+          </div>
+          <ol class="steps">
+            <li><strong>Add gear.</strong> Pick microphones, synths, mixers, interfaces, DJ gear, amplifiers, and speakers from the Library.</li>
+            <li><strong>Patch cables.</strong> Connect objects from the closest edge and keep labels away from overlaps.</li>
+            <li><strong>Describe the signal.</strong> Set terminal names, connector shapes, male/female ends, line style, color, and direction.</li>
+            <li><strong>Export the handoff.</strong> Send a tight-margin PDF to a venue, keep JSON for editing, or use PNG/SVG for documentation.</li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section-band">
+        <div class="section-inner">
+          <p class="eyebrow">Use cases</p>
+          <h2>Built for practical live situations.</h2>
+          <div class="use-case-list">
+            <article>
+              <h3>Venue advance sheets</h3>
+              <p>Share what connects to the stagebox, what returns to monitors, and which adapters may be needed before show day.</p>
+            </article>
+            <article>
+              <h3>DJ and electronic live rigs</h3>
+              <p>Document CDJs, turntables, mixers, interfaces, laptops, MIDI controllers, drum machines, and stereo outputs in one view.</p>
+            </article>
+            <article>
+              <h3>Band and backline notes</h3>
+              <p>Clarify vocal mics, DI boxes, guitar amps, bass amps, monitor wedges, and main speaker paths for the people setting the stage.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-band support-band">
+        <div class="section-inner support-panel">
+          <div>
+            <p class="eyebrow">Support</p>
+            <h2>Free to use, built with care.</h2>
+            <p class="section-lead">
+              GearPatch is free to use. If it saves you time before load-in, you can support ongoing development via PayPal.
+            </p>
+          </div>
+          <a class="button primary" href="https://www.paypal.com/paypalme/ksd6700" target="_blank" rel="noopener">Support on PayPal</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>GearPatch is a local-first web tool for signal flow documents.</p>
+      <nav aria-label="Footer navigation">
+        <a href="./landing-ja.html">日本語</a>
+        <a href="./index.html">Open App</a>
+        <a href="./guide.html">Guide</a>
+        <a href="./privacy.html">Privacy Policy</a>
+        <a href="https://www.paypal.com/paypalme/ksd6700" target="_blank" rel="noopener">Support</a>
+      </nav>
+    </footer>
+  </body>
+</html>

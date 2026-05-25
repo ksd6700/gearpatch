@@ -1,13 +1,13 @@
 # Third-Party Notices
 
-GearFlow toolbar, menu, and selected gear icons use inline SVG paths from
+GearPatch toolbar, menu, and selected gear icons use inline SVG paths from
 Tabler Icons.
 
 Source: https://tabler.io/icons
 License: MIT License
 Copyright (c) 2020-2026 Paweł Kuna
 
-GearFlow uses a small set of inline SVG icon paths adapted from Lucide Icons.
+GearPatch uses a small set of inline SVG icon paths adapted from Lucide Icons.
 
 Source: https://lucide.dev/
 License: ISC License
@@ -51,5 +51,5 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-GearFlow gear and connector icons that do not have a suitable OSS match are
+GearPatch gear and connector icons that do not have a suitable OSS match are
 custom SVGs drawn for this prototype.
