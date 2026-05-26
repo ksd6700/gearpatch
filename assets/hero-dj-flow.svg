@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1528" height="968" viewBox="1648 1336 1528 968">
+      <rect x="1648" y="1336" width="1528" height="968" fill="#ffffff"/>
+      <defs>
+        <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+          <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#e7e7e2" stroke-width="1"/>
+        </pattern>
+      </defs>
+      <rect x="1648" y="1336" width="1528" height="968" fill="url(#grid)"/>
+      <path d="M 1906 1474 C 2100.8841206871407 1474, 2229.1158793128593 1719.4, 2424 1719.4" fill="none" stroke="#111111" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M 1906 1474 C 2100.8841206871407 1474, 2229.1158793128593 1719.4, 2424 1719.4" fill="none" stroke="#ffffff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/><g transform="translate(2165 1596.7) rotate(37.215938324187256)"><path d="M -8 -7 L 8 0 L -8 7 Z" fill="#ffffff" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/><path d="M -7 -5.5 L 7 0 L -7 5.5 Z" fill="#111111"/></g><path d="M 1906 1690 C 2084.8170517596127 1690, 2245.1829482403873 1781, 2424 1781" fill="none" stroke="#d92d20" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M 1906 1690 C 2084.8170517596127 1690, 2245.1829482403873 1781, 2424 1781" fill="none" stroke="#ffffff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/><g transform="translate(2165 1735.5) rotate(15.018312854970167)"><path d="M -8 -7 L 8 0 L -8 7 Z" fill="#ffffff" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/><path d="M -7 -5.5 L 7 0 L -7 5.5 Z" fill="#d92d20"/></g><path d="M 1914 1931 C 2089.985576499894 1931, 2248.014423500106 1842.6, 2424 1842.6" fill="none" stroke="#2563eb" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M 1914 1931 C 2089.985576499894 1931, 2248.014423500106 1842.6, 2424 1842.6" fill="none" stroke="#ffffff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/><g transform="translate(2169 1886.8) rotate(-14.823981966973026)"><path d="M -8 -7 L 8 0 L -8 7 Z" fill="#ffffff" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/><path d="M -7 -5.5 L 7 0 L -7 5.5 Z" fill="#2563eb"/></g><path d="M 1916 2168 C 1992 2168, 2012 2151, 2088 2151" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><g transform="translate(2002 2159.5) rotate(-10.042023635529512)"><path d="M -8 -7 L 8 0 L -8 7 Z" fill="#ffffff" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/><path d="M -7 -5.5 L 7 0 L -7 5.5 Z" fill="#2563eb"/></g><path d="M 2187 2088 C 2187 1947.3057158232787, 2531 1998.6942841767213, 2531 1858" fill="none" stroke="#111111" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M 2187 2088 C 2187 1947.3057158232787, 2531 1998.6942841767213, 2531 1858" fill="none" stroke="#ffffff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/><g transform="translate(2359 1973) rotate(-14.553264378950939)"><path d="M -8 -7 L 8 0 L -8 7 Z" fill="#ffffff" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/><path d="M -7 -5.5 L 7 0 L -7 5.5 Z" fill="#111111"/></g><path d="M 2638 1748.66 C 2749.5860086720554 1748.66, 2816.4139913279446 1595, 2928 1595" fill="none" stroke="#7c3aed" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><g transform="translate(2783 1671.83) rotate(-40.73685098446754)"><path d="M -8 -7 L 8 0 L -8 7 Z" fill="#ffffff" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/><path d="M -7 -5.5 L 7 0 L -7 5.5 Z" fill="#7c3aed"/></g><path d="M 2638 1813.34 C 2747.734996365608 1813.34, 2818.265003634392 1955, 2928 1955" fill="none" stroke="#7c3aed" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><g transform="translate(2783 1884.17) rotate(38.16178782556577)"><path d="M -8 -7 L 8 0 L -8 7 Z" fill="#ffffff" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/><path d="M -7 -5.5 L 7 0 L -7 5.5 Z" fill="#7c3aed"/></g>
+      
+        <g>
+          <rect x="1728" y="1416" width="178" height="116" rx="8" fill="#f8f8f5" stroke="#111" stroke-width="1.4"/>
+          <text x="1742" y="1444" font-size="14" font-weight="800">CDJ 1</text>
+          <text x="1742" y="1462" font-size="10" fill="#666">CDJ</text>
+        </g>
+        <g>
+          <rect x="1728" y="1632" width="178" height="116" rx="8" fill="#f8f8f5" stroke="#111" stroke-width="1.4"/>
+          <text x="1742" y="1660" font-size="14" font-weight="800">CDJ 2</text>
+          <text x="1742" y="1678" font-size="10" fill="#666">CDJ</text>
+        </g>
+        <g>
+          <rect x="1728" y="1872" width="186" height="118" rx="8" fill="#f8f8f5" stroke="#111" stroke-width="1.4"/>
+          <text x="1742" y="1900" font-size="14" font-weight="800">Turntable</text>
+          <text x="1742" y="1918" font-size="10" fill="#666">Turntable</text>
+        </g>
+        <g>
+          <rect x="1728" y="2112" width="188" height="112" rx="8" fill="#f8f8f5" stroke="#111" stroke-width="1.4"/>
+          <text x="1742" y="2140" font-size="14" font-weight="800">Laptop PC</text>
+          <text x="1742" y="2158" font-size="10" fill="#666">Laptop PC</text>
+        </g>
+        <g>
+          <rect x="2088" y="2088" width="198" height="126" rx="8" fill="#f8f8f5" stroke="#111" stroke-width="1.4"/>
+          <text x="2102" y="2116" font-size="14" font-weight="800">Audio Interface</text>
+          <text x="2102" y="2134" font-size="10" fill="#666">Audio I/O</text>
+        </g>
+        <g>
+          <rect x="2424" y="1704" width="214" height="154" rx="8" fill="#f8f8f5" stroke="#111" stroke-width="1.4"/>
+          <text x="2438" y="1732" font-size="14" font-weight="800">Sub Mixer</text>
+          <text x="2438" y="1750" font-size="10" fill="#666">Mixer</text>
+        </g>
+        <g>
+          <rect x="2928" y="1536" width="168" height="118" rx="8" fill="#f8f8f5" stroke="#111" stroke-width="1.4"/>
+          <text x="2942" y="1564" font-size="14" font-weight="800">Main Speaker L</text>
+          <text x="2942" y="1582" font-size="10" fill="#666">Speaker</text>
+        </g>
+        <g>
+          <rect x="2928" y="1896" width="168" height="118" rx="8" fill="#f8f8f5" stroke="#111" stroke-width="1.4"/>
+          <text x="2942" y="1924" font-size="14" font-weight="800">Main Speaker R</text>
+          <text x="2942" y="1942" font-size="10" fill="#666">Speaker</text>
+        </g>
+      
+    <g class="terminal-badge" transform="translate(1898 1460)">
+      <rect y="0" width="98" height="28" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+      <circle cx="8" cy="14" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
+      <text x="23" y="15.2" text-anchor="start" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820">Stereo out</text>
+      <text x="112" y="15.2" text-anchor="start" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760">RCA M</text>
+    </g>
+    <g class="terminal-badge" transform="translate(2340 1705.4)">
+      <rect y="0" width="92" height="28" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+      <circle cx="84" cy="14" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
+      <text x="69" y="15.2" text-anchor="end" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820">Line in 1</text>
+      <text x="-14" y="15.2" text-anchor="end" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760">RCA F</text>
+    </g>
+    <g class="terminal-badge" transform="translate(1898 1676)">
+      <rect y="0" width="98" height="28" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+      <circle cx="8" cy="14" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
+      <text x="23" y="15.2" text-anchor="start" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820">Stereo out</text>
+      <text x="112" y="15.2" text-anchor="start" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760">RCA M</text>
+    </g>
+    <g class="terminal-badge" transform="translate(2340 1767)">
+      <rect y="0" width="92" height="28" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+      <circle cx="84" cy="14" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
+      <text x="69" y="15.2" text-anchor="end" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820">Line in 2</text>
+      <text x="-14" y="15.2" text-anchor="end" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760">RCA F</text>
+    </g>
+    <g class="terminal-badge" transform="translate(1906 1917)">
+      <rect y="0" width="92" height="28" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+      <circle cx="8" cy="14" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
+      <text x="23" y="15.2" text-anchor="start" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820">Phono out</text>
+      <text x="106" y="15.2" text-anchor="start" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760">RCA M</text>
+    </g>
+    <g class="terminal-badge" transform="translate(2346 1828.6)">
+      <rect y="0" width="86" height="28" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+      <circle cx="78" cy="14" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
+      <text x="63" y="15.2" text-anchor="end" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820">Phono in</text>
+      <text x="-14" y="15.2" text-anchor="end" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760">RCA F</text>
+    </g>
+    <g class="terminal-badge" transform="translate(1908 2154)">
+      <rect y="0" width="79" height="28" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+      <circle cx="8" cy="14" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
+      <text x="23" y="15.2" text-anchor="start" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820">USB out</text>
+      <text x="93" y="15.2" text-anchor="start" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760">USB-C M</text>
+    </g>
+    <g class="terminal-badge" transform="translate(2023 2137)">
+      <rect y="0" width="73" height="28" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+      <circle cx="65" cy="14" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
+      <text x="50" y="15.2" text-anchor="end" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820">USB in</text>
+      <text x="-14" y="15.2" text-anchor="end" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760">USB-C F</text>
+    </g>
+    <g class="terminal-badge" transform="translate(2173 1992)">
+      <rect y="0" width="28" height="104" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+      <circle cx="14" cy="96" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
+      <text x="14" y="44" text-anchor="middle" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820" transform="rotate(90 14 44)">Stereo out</text>
+      <text x="-14" y="44" text-anchor="middle" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760" transform="rotate(90 -14 44)">TRS M</text>
+    </g>
+    <g class="terminal-badge" transform="translate(2517 1850)">
+      <rect y="0" width="28" height="111" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+      <circle cx="14" cy="8" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
+      <text x="14" y="63.5" text-anchor="middle" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820" transform="rotate(90 14 63.5)">Line in 3/4</text>
+      <text x="42" y="63.5" text-anchor="middle" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760" transform="rotate(90 42 63.5)">TRS F</text>
+    </g>
+    <g class="terminal-badge" transform="translate(2630 1734.66)">
+      <rect y="0" width="73" height="28" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+      <circle cx="8" cy="14" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
+      <text x="23" y="15.2" text-anchor="start" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820">Main L</text>
+      <text x="87" y="15.2" text-anchor="start" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760">XLR M</text>
+    </g>
+    <g class="terminal-badge" transform="translate(2850 1581)">
+      <rect y="0" width="86" height="28" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+      <circle cx="78" cy="14" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
+      <text x="63" y="15.2" text-anchor="end" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820">Audio in</text>
+      <text x="-14" y="15.2" text-anchor="end" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760">XLR F</text>
+    </g>
+    <g class="terminal-badge" transform="translate(2630 1799.34)">
+      <rect y="0" width="73" height="28" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+      <circle cx="8" cy="14" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
+      <text x="23" y="15.2" text-anchor="start" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820">Main R</text>
+      <text x="87" y="15.2" text-anchor="start" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760">XLR M</text>
+    </g>
+    <g class="terminal-badge" transform="translate(2850 1941)">
+      <rect y="0" width="86" height="28" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+      <circle cx="78" cy="14" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
+      <text x="63" y="15.2" text-anchor="end" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820">Audio in</text>
+      <text x="-14" y="15.2" text-anchor="end" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760">XLR F</text>
+    </g>
+    </svg>
