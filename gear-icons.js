@@ -28,8 +28,8 @@
     { id: "amp", label: "Amp" },
   ];
 
-  const iconAssetVersion = Date.now().toString(36);
-  const iconPaths = Object.fromEntries(iconOptions.map((icon) => [icon.id, `./icons/${icon.id}.svg?v=${iconAssetVersion}`]));
+  const iconAssetVersion = window.location.protocol === "file:" ? "" : `?v=${Date.now().toString(36)}`;
+  const iconPaths = Object.fromEntries(iconOptions.map((icon) => [icon.id, `./icons/${icon.id}.svg${iconAssetVersion}`]));
 
   window.GEARPATCH_GEAR_ICON_PATHS = iconPaths;
   window.GEARPATCH_ICON_OPTIONS = iconOptions;

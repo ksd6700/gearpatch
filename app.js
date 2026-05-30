@@ -24,16 +24,23 @@ const state = {
   notes: "",
   nodes: [],
   edges: [],
+  powerOutlets: [],
+  powerEdges: [],
+  activeLayer: "signal",
   selected: new Set(),
   selectedEdge: null,
+  selectedPowerEdge: null,
+  selectedPowerOutlet: null,
   connecting: null,
   portDrag: null,
+  powerDrag: null,
   portPopover: null,
   viewport: { x: -420, y: -420, scale: 0.86 },
   history: [],
   future: [],
   autosaveTimer: null,
   drag: null,
+  powerOutletDrag: null,
   pan: null,
   resize: null,
   clipboard: null,
@@ -102,6 +109,7 @@ const templates = [
   templateEntry({ type: "midi-controller", label: "MIDI Controller", jaLabel: "MIDIコントローラー", group: "controllers", icon: "midiController", defaultName: "MIDI Controller", defaultLabel: "Controller", tags: ["MIDI", "USB"], w: 204, h: 116 }),
   templateEntry({ type: "audio-interface", label: "Audio Interface", jaLabel: "オーディオインターフェース", group: "interfaces", icon: "interface", defaultName: "Audio Interface", defaultLabel: "Audio I/O", tags: ["USB-C", "TRS"], w: 198, h: 126 }),
   templateEntry({ type: "mixer", label: "Mixer", jaLabel: "ミキサー", group: "interfaces", icon: "mixer", defaultName: "Sub Mixer", defaultLabel: "Mixer", tags: ["FOH", "Inputs"], w: 214, h: 154 }),
+  templateEntry({ type: "pa-mixer", label: "PA Mixer", jaLabel: "PAミキサー", group: "interfaces", icon: "mixer", defaultName: "PA Mixer", defaultLabel: "FOH / Venue", tags: ["PA", "FOH"], w: 224, h: 160 }),
   templateEntry({ type: "effector", label: "Effector", jaLabel: "エフェクター", group: "effects", icon: "effector", defaultName: "Effector", defaultLabel: "FX", tags: ["FX", "TS"], w: 160, h: 108 }),
   templateEntry({ type: "pedalboard", label: "Effects Pedal / Pedalboard", jaLabel: "エフェクター / ペダルボード", group: "effects", icon: "pedalboard", defaultName: "Pedalboard", defaultLabel: "FX Pedal", tags: ["Pedals", "FX"], w: 214, h: 120 }),
   templateEntry({ type: "guitar-amplifier", label: "Guitar Amplifier", jaLabel: "ギターアンプ", group: "amps", icon: "guitarAmp", defaultName: "Guitar Amp", defaultLabel: "Amp", tags: ["Amp", "Mic"], w: 178, h: 122 }),
@@ -116,13 +124,76 @@ const templates = [
 const strokeIcon = (body, extra = "") =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${extra}>${body}</svg>`;
 
-const iconPaths = window.GEARPATCH_GEAR_ICON_PATHS || {};
-const ICON_OPTIONS = window.GEARPATCH_ICON_OPTIONS || [];
+const fallbackIconIds = [
+  "mic",
+  "synthesizer",
+  "keyboard",
+  "drumMachine",
+  "guitar",
+  "bass",
+  "turntable",
+  "cdj",
+  "laptop",
+  "midiController",
+  "interface",
+  "mixer",
+  "effector",
+  "pedalboard",
+  "guitarAmp",
+  "bassAmp",
+  "powerAmp",
+  "speakerCab",
+  "comboAmp",
+  "box",
+  "rack",
+  "keys",
+  "speaker",
+  "amp",
+];
+const fallbackIconPaths = Object.fromEntries(fallbackIconIds.map((id) => [id, `./icons/${id}.svg`]));
+const iconPaths = Object.keys(window.GEARPATCH_GEAR_ICON_PATHS || {}).length ? window.GEARPATCH_GEAR_ICON_PATHS : fallbackIconPaths;
+const ICON_OPTIONS = (window.GEARPATCH_ICON_OPTIONS || []).length
+  ? window.GEARPATCH_ICON_OPTIONS
+  : fallbackIconIds.map((id) => ({ id, label: id }));
+const exportIconMarkup = {};
+let exportIconDataPromise = null;
 const gearIcon = (id) => {
   const src = iconPaths[id] || iconPaths.box || "";
   if (!src) return "";
   return `<span class="gear-icon-glyph" style="--gear-icon-url: url('${escapeAttr(src)}')" aria-hidden="true"></span>`;
 };
+
+function exportIconSvgToMarkup(svg) {
+  const normalized = String(svg || "")
+    .trim()
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replaceAll("currentColor", "#111111");
+  return normalized.match(/<svg\b[^>]*>([\s\S]*?)<\/svg>/i)?.[1] || "";
+}
+
+async function ensureExportIconData() {
+  if (exportIconDataPromise) return exportIconDataPromise;
+  exportIconDataPromise = Promise.all(
+    Object.entries(iconPaths).map(async ([id, src]) => {
+      try {
+        const response = await fetch(src);
+        if (!response.ok) throw new Error(`Icon request failed: ${response.status}`);
+        exportIconMarkup[id] = exportIconSvgToMarkup(await response.text());
+      } catch (error) {
+        console.warn(`Could not load export icon: ${id}`, error);
+      }
+    }),
+  );
+  return exportIconDataPromise;
+}
+
+function exportIconSvg(id, x, y, size) {
+  const markup = exportIconMarkup[id] || exportIconMarkup.box;
+  if (!markup) {
+    return `<path d="M${x + size / 2} ${y + 3}l${size * 0.38} ${size * 0.21}l0 ${size * 0.43}l-${size * 0.38} ${size * 0.21}l-${size * 0.38} -${size * 0.21}l0 -${size * 0.43}l${size * 0.38} -${size * 0.21}M${x + size / 2} ${y + size / 2}l${size * 0.38} -${size * 0.21}M${x + size / 2} ${y + size / 2}l0 ${size * 0.43}M${x + size / 2} ${y + size / 2}l-${size * 0.38} -${size * 0.21}" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  return `<g transform="translate(${x} ${y}) scale(${size / 24})" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${markup}</g>`;
+}
 
 const portSvg = {
   "xlr-m": strokeIcon(`<circle cx="12" cy="12" r="7"/><circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="15" r="1" fill="currentColor" stroke="none"/><path d="M12 5v2"/>`),
@@ -173,6 +244,7 @@ const dom = {
   world: $("#world"),
   nodeLayer: $("#nodeLayer"),
   edgeLayer: $("#edgeLayer"),
+  powerOutletLayer: $("#powerOutletLayer"),
   terminalLayer: $("#terminalLayer"),
   canvasHint: $("#canvasHint"),
   minimap: $("#minimap"),
@@ -193,6 +265,8 @@ const dom = {
   nodeInspector: $("#nodeInspector"),
   nodeTitleInput: $("#nodeTitleInput"),
   nodeSubtitleInput: $("#nodeSubtitleInput"),
+  nodePowerField: $("#nodePowerField"),
+  nodePowerInput: $("#nodePowerInput"),
   nodeIconPicker: $("#nodeIconPicker"),
   edgeInspector: $("#edgeInspector"),
   edgeSummary: $("#edgeSummary"),
@@ -202,6 +276,14 @@ const dom = {
   edgeColorInput: $("#edgeColorInput"),
   edgeColorSwatches: $("#edgeColorSwatches"),
   edgeWidthInput: $("#edgeWidthInput"),
+  powerInspector: $("#powerInspector"),
+  powerSummary: $("#powerSummary"),
+  powerOutletNameField: $("#powerOutletNameField"),
+  powerOutletNameInput: $("#powerOutletNameInput"),
+  powerOutletLimitField: $("#powerOutletLimitField"),
+  powerOutletLimitInput: $("#powerOutletLimitInput"),
+  signalLayerBtn: $("#signalLayerBtn"),
+  powerLayerBtn: $("#powerLayerBtn"),
   portPopover: $("#portPopover"),
   projectNameInput: $("#projectNameInput"),
   notesInput: $("#notesInput"),
@@ -231,11 +313,14 @@ function exportData() {
     createdAt: new Date().toISOString(),
     nodes: clone(state.nodes),
     edges: clone(state.edges),
+    powerOutlets: clone(state.powerOutlets),
+    powerEdges: clone(state.powerEdges),
     viewport: clone(state.viewport),
     metadata: {
       notes: state.notes,
       app: APP_NAME,
       format: "gearpatch-json",
+      activeLayer: state.activeLayer,
     },
   };
 }
@@ -246,6 +331,9 @@ function snapshot() {
     notes: state.notes,
     nodes: clone(state.nodes),
     edges: clone(state.edges),
+    powerOutlets: clone(state.powerOutlets),
+    powerEdges: clone(state.powerEdges),
+    activeLayer: state.activeLayer,
     viewport: clone(state.viewport),
   };
 }
@@ -255,13 +343,21 @@ function restoreSnapshot(snap) {
   state.notes = snap.notes || snap.metadata?.notes || "";
   state.nodes = clone(snap.nodes || []);
   state.edges = clone(snap.edges || []);
+  state.powerOutlets = clone(snap.powerOutlets || []);
+  state.powerEdges = clone(snap.powerEdges || []);
+  state.activeLayer = snap.activeLayer || snap.metadata?.activeLayer || "signal";
   state.viewport = snap.viewport || { x: -620, y: -420, scale: 1 };
   state.selected = new Set();
   state.selectedEdge = null;
+  state.selectedPowerEdge = null;
+  state.selectedPowerOutlet = null;
   state.connecting = null;
   state.portDrag = null;
+  state.powerDrag = null;
+  state.powerOutletDrag = null;
   state.portPopover = null;
   autoPlacePortsForEdges();
+  autoPlacePowerEdgesForNodeIds(state.nodes.map((node) => node.id));
   dom.projectNameInput.value = state.name;
   dom.notesInput.value = state.notes;
   render();
@@ -305,7 +401,7 @@ function addVersion(data) {
     savedAt: new Date().toISOString(),
     name: data.name || "Untitled",
     nodes: data.nodes.length,
-    edges: data.edges.length,
+    edges: data.edges.length + (data.powerEdges?.length || 0),
     payload: current,
   });
   localStorage.setItem(HISTORY_KEY, JSON.stringify(versions.slice(0, 20)));
@@ -345,6 +441,7 @@ function makeNode(template, x = 1200, y = 900) {
     y: snapToGrid(y),
     w: template.w,
     h: template.h,
+    powerWatts: template.powerWatts ?? "",
     ports,
   };
 }
@@ -397,10 +494,12 @@ function worldToScreen(x, y) {
 function render() {
   dom.projectNameInput.value = state.name;
   dom.notesInput.value = state.notes;
+  updateLayerUi();
   renderLibrary();
   renderWorldTransform();
   renderEdges();
   renderNodes();
+  renderPowerOutlets();
   renderInspector();
   renderInputList();
   renderMinimap();
@@ -409,10 +508,19 @@ function render() {
 }
 
 function clearSelection() {
-  const hadSelection = state.selected.size > 0 || !!state.selectedEdge || !!state.connecting || !!state.portPopover;
+  const hadSelection =
+    state.selected.size > 0 ||
+    !!state.selectedEdge ||
+    !!state.selectedPowerEdge ||
+    !!state.selectedPowerOutlet ||
+    !!state.connecting ||
+    !!state.portPopover;
   state.selected = new Set();
   state.selectedEdge = null;
+  state.selectedPowerEdge = null;
+  state.selectedPowerOutlet = null;
   state.connecting = null;
+  state.powerDrag = null;
   state.portPopover = null;
 
   if (!hadSelection) {
@@ -423,6 +531,7 @@ function clearSelection() {
 
   renderEdges();
   renderNodes();
+  renderPowerOutlets();
   renderInspector();
   renderPortPopover();
   return true;
@@ -492,6 +601,42 @@ function fieldCenter() {
   return { x: WORLD_W / 2, y: WORLD_H / 2 };
 }
 
+function makePowerOutlet(x, y, overrides = {}) {
+  return {
+    id: uid("outlet"),
+    name: "AC Outlet",
+    x: snapToGrid(x),
+    y: snapToGrid(y),
+    w: 150,
+    h: 84,
+    limitWatts: "",
+    ...overrides,
+  };
+}
+
+function addPowerOutlet(point = null) {
+  const center =
+    point ||
+    screenToWorld(
+      dom.canvasFrame.getBoundingClientRect().left + dom.canvasFrame.clientWidth / 2,
+      dom.canvasFrame.getBoundingClientRect().top + dom.canvasFrame.clientHeight / 2,
+    );
+  const outlet = makePowerOutlet(center.x - 75, center.y - 42);
+  state.powerOutlets.push(outlet);
+  state.activeLayer = "power";
+  state.selectedPowerOutlet = outlet.id;
+  state.selectedPowerEdge = null;
+  state.selectedEdge = null;
+  state.selected = new Set();
+  commit("Added power outlet");
+}
+
+function ensureDefaultPowerOutlet() {
+  if (state.powerOutlets.length) return;
+  const center = fieldCenter();
+  state.powerOutlets.push(makePowerOutlet(center.x + 500, center.y - 42, { name: "Stage AC" }));
+}
+
 function resetViewportToFieldCenter(scale = 1) {
   const rect = dom.canvasFrame.getBoundingClientRect();
   const width = rect.width || dom.canvasFrame.clientWidth || window.innerWidth;
@@ -520,13 +665,17 @@ function centerViewportOnWorldPoint(point) {
 function resetTransientState() {
   state.selected = new Set();
   state.selectedEdge = null;
+  state.selectedPowerEdge = null;
+  state.selectedPowerOutlet = null;
   state.connecting = null;
   state.portDrag = null;
+  state.powerDrag = null;
+  state.powerOutletDrag = null;
   state.portPopover = null;
 }
 
 function hasReplaceableFlow() {
-  return state.nodes.length > 0 || state.edges.length > 0;
+  return state.nodes.length > 0 || state.edges.length > 0 || state.powerOutlets.length > 0 || state.powerEdges.length > 0;
 }
 
 function confirmReplaceCurrentFlow(message) {
@@ -542,6 +691,34 @@ function consumeNewFlowConfirmation() {
   return confirmReplaceCurrentFlow("Start a new flow? The current gear and cables will be replaced.");
 }
 
+function updateLayerUi() {
+  const power = state.activeLayer === "power";
+  document.body.classList.toggle("power-mode", power);
+  dom.signalLayerBtn.classList.toggle("active", !power);
+  dom.powerLayerBtn.classList.toggle("active", power);
+  dom.canvasHint.querySelector("span:last-child").textContent = power ? "Drag dots to power outlets" : "Drag dots to patch";
+}
+
+function setActiveLayer(layer) {
+  const next = layer === "power" ? "power" : "signal";
+  if (state.activeLayer === next) {
+    if (next === "signal") closeMenus();
+    return;
+  }
+  closeMenus();
+  state.activeLayer = next;
+  state.selectedEdge = null;
+  state.selectedPowerEdge = null;
+  state.selectedPowerOutlet = null;
+  state.connecting = null;
+  state.portDrag = null;
+  state.powerDrag = null;
+  state.portPopover = null;
+  if (next === "power") ensureDefaultPowerOutlet();
+  render();
+  scheduleAutosave("Autosaved");
+}
+
 function renderWorldTransform() {
   dom.world.style.transform = `translate(${state.viewport.x}px, ${state.viewport.y}px) scale(${state.viewport.scale})`;
   dom.zoomReadout.textContent = `${Math.round(state.viewport.scale * 100)}%`;
@@ -554,6 +731,7 @@ function renderNodes() {
     const displaySubtitle = node.title?.trim() ? node.subtitle : "";
     const el = document.createElement("article");
     el.className = "gear-node";
+    if (state.activeLayer === "power") el.classList.add("power-editing");
     if (state.selected.has(node.id)) el.classList.add("selected");
     if (state.selected.size > 1 && state.selected.has(node.id)) el.classList.add("multi-selected");
     el.dataset.nodeId = node.id;
@@ -569,6 +747,7 @@ function renderNodes() {
           ${displaySubtitle ? `<div class="node-subtitle">${escapeHtml(displaySubtitle)}</div>` : ""}
         </div>
       </div>
+      ${state.activeLayer === "power" ? `<div class="node-power-watts">${formatWatts(nodePowerWatts(node))}</div>` : ""}
       <div class="resize-handle" title="Resize"></div>
     `;
 
@@ -587,8 +766,11 @@ function renderQuickHandle(node, side) {
   }
   button.dataset.nodeId = node.id;
   button.dataset.side = side;
-  button.setAttribute("aria-label", `${gearDisplayName(node)} ${side} connector`);
-  button.addEventListener("pointerdown", (event) => startConnectorDrag(event, node, side));
+  button.setAttribute("aria-label", `${gearDisplayName(node)} ${side} ${state.activeLayer === "power" ? "power" : "signal"} connector`);
+  button.addEventListener("pointerdown", (event) => {
+    if (state.activeLayer === "power") startPowerConnectorDrag(event, node, side);
+    else startConnectorDrag(event, node, side);
+  });
   return button;
 }
 
@@ -622,6 +804,17 @@ function renderPort(node, port) {
 function renderEdges() {
   dom.edgeLayer.innerHTML = "";
   dom.terminalLayer.innerHTML = "";
+  if (state.activeLayer === "power") {
+    renderSignalEdges({ muted: true, interactive: false });
+    renderPowerEdges();
+    renderPowerDragPreview();
+    return;
+  }
+  renderSignalEdges({ muted: false, interactive: true });
+  renderPortDragPreview();
+}
+
+function renderSignalEdges({ muted = false, interactive = true } = {}) {
   const terminalBadges = [];
   state.edges.forEach((edge) => {
     const endpoints = edgeEndpointPoints(edge);
@@ -634,39 +827,132 @@ function renderEdges() {
       class: "patch-cable-hit",
       "data-edge-id": edge.id,
     });
-    const cablePaths = cablePathSvgElements(d, style, state.selectedEdge === edge.id);
+    const cablePaths = cablePathSvgElements(d, style, interactive && state.selectedEdge === edge.id);
+    if (muted) {
+      cablePaths.forEach((path) => {
+        path.classList.add("signal-muted");
+        path.setAttribute("stroke", "#111111");
+      });
+    }
     const controls = cableControlPoints(from, to, endpoints.fromSide, endpoints.toSide);
-    const directionArrows = cableDirectionSvgElements(controls, edge, style.color, state.selectedEdge === edge.id);
+    const directionArrows = muted ? [] : cableDirectionSvgElements(controls, edge, style.color, state.selectedEdge === edge.id);
+    if (interactive) {
+      hit.addEventListener("click", () => {
+        state.selectedEdge = edge.id;
+        state.selectedPowerEdge = null;
+        state.selectedPowerOutlet = null;
+        state.selected = new Set();
+        state.portPopover = null;
+        render();
+      });
+      dom.edgeLayer.append(hit, ...cablePaths, ...directionArrows);
+      terminalBadges.push(
+        cableEndChipSvg(from, edge, "from", style.color, state.selectedEdge === edge.id, to),
+        cableEndChipSvg(to, edge, "to", style.color, state.selectedEdge === edge.id, from),
+      );
+    } else {
+      dom.edgeLayer.append(...cablePaths, ...directionArrows);
+    }
+  });
+  dom.terminalLayer.append(...terminalBadges);
+}
+
+function renderPowerEdges() {
+  const powerBadges = [];
+  state.powerEdges.forEach((edge) => {
+    const endpoints = powerEdgeEndpointPoints(edge);
+    if (!endpoints) return;
+    const { from, to } = endpoints;
+    const d = cablePath(from, to, endpoints.fromSide, endpoints.toSide);
+    const selected = state.selectedPowerEdge === edge.id;
+    const hit = svgEl("path", {
+      d,
+      class: "power-cable-hit",
+      "data-power-edge-id": edge.id,
+    });
+    const cable = svgEl("path", {
+      d,
+      class: `power-cable ${selected ? "selected" : ""}`,
+      stroke: "#111111",
+      "stroke-width": selected ? 3.4 : 2.6,
+      "stroke-dasharray": "9 6",
+    });
     hit.addEventListener("click", () => {
-      state.selectedEdge = edge.id;
+      state.selectedPowerEdge = edge.id;
+      state.selectedPowerOutlet = null;
+      state.selectedEdge = null;
       state.selected = new Set();
       state.portPopover = null;
       render();
     });
-    dom.edgeLayer.append(hit, ...cablePaths, ...directionArrows);
-    terminalBadges.push(
-      cableEndChipSvg(from, edge, "from", style.color, state.selectedEdge === edge.id, to),
-      cableEndChipSvg(to, edge, "to", style.color, state.selectedEdge === edge.id, from),
-    );
+    dom.edgeLayer.append(hit, cable);
+    powerBadges.push(powerEndChipSvg(from, edge, "from", selected));
   });
-  dom.terminalLayer.append(...terminalBadges);
-  renderPortDragPreview();
+  dom.terminalLayer.append(...powerBadges);
+}
+
+function renderPowerOutlets() {
+  dom.powerOutletLayer.innerHTML = "";
+  if (state.activeLayer !== "power") return;
+  state.powerOutlets.forEach((outlet) => {
+    const el = document.createElement("article");
+    el.className = "power-outlet";
+    if (state.selectedPowerOutlet === outlet.id) el.classList.add("selected");
+    if (state.powerDrag?.target?.outletId === outlet.id) el.classList.add("drop-target");
+    el.dataset.outletId = outlet.id;
+    el.style.left = `${outlet.x}px`;
+    el.style.top = `${outlet.y}px`;
+    el.innerHTML = `
+      <span class="power-outlet-icon" aria-hidden="true">
+        <svg class="tabler-icon" focusable="false" viewBox="0 0 24 24">
+          <path d="M7 7v-4" />
+          <path d="M17 7v-4" />
+          <path d="M5 11h14" />
+          <path d="M8 11v3a4 4 0 0 0 8 0v-3" />
+          <path d="M12 18v3" />
+        </svg>
+      </span>
+      <span>
+        <span class="power-outlet-title">${escapeHtml(outlet.name || "AC Outlet")}</span>
+        <span class="power-outlet-total">${escapeHtml(powerOutletTotalLabel(outlet))}</span>
+      </span>
+    `;
+    el.addEventListener("pointerdown", (event) => startPowerOutletDrag(event, outlet));
+    dom.powerOutletLayer.appendChild(el);
+  });
 }
 
 function renderInspector() {
   const selectedNodes = state.nodes.filter((node) => state.selected.has(node.id));
   const selectedEdge = getSelectedEdge();
-  const selectedName = selectedNodes[0] ? gearDisplayName(selectedNodes[0]) : selectedEdge ? "Cable" : "Inspector";
+  const selectedPowerEdge = getSelectedPowerEdge();
+  const selectedPowerOutlet = getSelectedPowerOutlet();
+  const selectedName = selectedNodes[0]
+    ? gearDisplayName(selectedNodes[0])
+    : selectedEdge
+      ? "Cable"
+      : selectedPowerEdge
+        ? "Power cable"
+        : selectedPowerOutlet
+          ? selectedPowerOutlet.name || "AC Outlet"
+          : "Inspector";
   const selectedCount = selectedNodes.length > 1 ? `（${selectedNodes.length}）` : "";
   dom.inspectorTitle.textContent = selectedName;
   dom.selectionCount.textContent = selectedCount;
   dom.selectionCount.hidden = !selectedCount;
   const single = selectedNodes.length === 1 ? selectedNodes[0] : null;
-  dom.emptyInspector.classList.toggle("hidden", !!single || !!selectedEdge);
+  const showPowerInspector = state.activeLayer === "power" && (!!selectedPowerEdge || !!selectedPowerOutlet);
+  dom.emptyInspector.classList.toggle("hidden", !!single || !!selectedEdge || showPowerInspector);
   dom.nodeInspector.classList.toggle("hidden", !single);
-  dom.edgeInspector.classList.toggle("hidden", !selectedEdge);
+  dom.edgeInspector.classList.toggle("hidden", !selectedEdge || state.activeLayer === "power");
+  dom.powerInspector.classList.toggle("hidden", !showPowerInspector);
 
-  if (selectedEdge) {
+  if (showPowerInspector) {
+    renderPowerInspector(selectedPowerEdge, selectedPowerOutlet);
+    return;
+  }
+
+  if (selectedEdge && state.activeLayer !== "power") {
     const style = cableVisualStyle(selectedEdge);
     dom.edgeSummary.innerHTML = edgeSummaryMarkup(selectedEdge);
     dom.edgeSignalTypes.innerHTML = Object.entries(LINE_STYLES)
@@ -691,6 +977,8 @@ function renderInspector() {
 
   dom.nodeTitleInput.value = single.title;
   dom.nodeSubtitleInput.value = single.subtitle;
+  dom.nodePowerField.classList.toggle("hidden", state.activeLayer !== "power");
+  dom.nodePowerInput.value = single.powerWatts ?? "";
   dom.nodeIconPicker.innerHTML = ICON_OPTIONS.map(
     (icon) => `
       <button class="icon-choice ${single.icon === icon.id ? "active" : ""}" data-node-icon="${icon.id}" title="${escapeAttr(icon.label)}" aria-label="${escapeAttr(icon.label)}">
@@ -698,6 +986,29 @@ function renderInspector() {
       </button>
     `,
   ).join("");
+}
+
+function renderPowerInspector(selectedPowerEdge, selectedPowerOutlet) {
+  const outlet = selectedPowerOutlet || getPowerOutlet(selectedPowerEdge?.to?.outletId);
+  const node = selectedPowerEdge ? getNode(selectedPowerEdge.from.nodeId) : null;
+  const total = outlet ? powerOutletTotalWatts(outlet.id) : 0;
+  const limit = outlet ? Number(outlet.limitWatts) || 0 : 0;
+  const loadLine = limit > 0 ? `${formatWatts(total)} / ${formatWatts(limit)}` : `${formatWatts(total)} total`;
+  dom.powerSummary.innerHTML = selectedPowerEdge
+    ? `
+      <span class="signal-pill">Power layer</span>
+      <strong>${escapeHtml(gearDisplayName(node))} → ${escapeHtml(outlet?.name || "AC Outlet")}</strong>
+      <span>${escapeHtml(formatWatts(nodePowerWatts(node)))} on this cable · ${escapeHtml(loadLine)}</span>
+    `
+    : `
+      <span class="signal-pill">Power outlet</span>
+      <strong>${escapeHtml(outlet?.name || "AC Outlet")}</strong>
+      <span>${escapeHtml(loadLine)} · ${powerOutletConnectedNodeIds(outlet?.id).length} connected gear</span>
+    `;
+  dom.powerOutletNameField.classList.toggle("hidden", !outlet);
+  dom.powerOutletLimitField.classList.toggle("hidden", !outlet);
+  dom.powerOutletNameInput.value = outlet?.name || "";
+  dom.powerOutletLimitInput.value = outlet?.limitWatts ?? "";
 }
 
 function renderInputList() {
@@ -855,6 +1166,17 @@ function renderMinimap() {
     el.style.height = `${Math.max(3, node.h * MINIMAP_SCALE)}px`;
     dom.minimap.appendChild(el);
   });
+  if (state.activeLayer === "power") {
+    state.powerOutlets.forEach((outlet) => {
+      const el = document.createElement("span");
+      el.className = "mini-node power-mini-node";
+      el.style.left = `${outlet.x * MINIMAP_SCALE}px`;
+      el.style.top = `${outlet.y * MINIMAP_SCALE}px`;
+      el.style.width = `${Math.max(3, outlet.w * MINIMAP_SCALE)}px`;
+      el.style.height = `${Math.max(3, outlet.h * MINIMAP_SCALE)}px`;
+      dom.minimap.appendChild(el);
+    });
+  }
   const rect = dom.canvasFrame.getBoundingClientRect();
   const view = document.createElement("span");
   view.className = "mini-view";
@@ -892,6 +1214,35 @@ function makeInputRows() {
       notes: compatibilityNote(fromKind, toKind),
     };
   });
+}
+
+function nodePowerWatts(node) {
+  const value = Number(node?.powerWatts);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function formatWatts(value) {
+  const watts = Number(value) || 0;
+  return `${Math.round(watts)} W`;
+}
+
+function powerEdgeLoadLabel(edge) {
+  return formatWatts(nodePowerWatts(getNode(edge?.from?.nodeId)));
+}
+
+function powerOutletConnectedNodeIds(outletId) {
+  if (!outletId) return [];
+  return Array.from(new Set(state.powerEdges.filter((edge) => edge.to.outletId === outletId).map((edge) => edge.from.nodeId).filter(Boolean)));
+}
+
+function powerOutletTotalWatts(outletId) {
+  return powerOutletConnectedNodeIds(outletId).reduce((sum, nodeId) => sum + nodePowerWatts(getNode(nodeId)), 0);
+}
+
+function powerOutletTotalLabel(outlet) {
+  const total = powerOutletTotalWatts(outlet.id);
+  const limit = Number(outlet.limitWatts) || 0;
+  return limit > 0 ? `${formatWatts(total)} / ${formatWatts(limit)}` : `${formatWatts(total)} total`;
 }
 
 function edgeSignalType(edge) {
@@ -991,6 +1342,8 @@ function startConnectorDrag(event, node, side) {
   event.stopPropagation();
   state.selected = new Set([node.id]);
   state.selectedEdge = null;
+  state.selectedPowerEdge = null;
+  state.selectedPowerOutlet = null;
   state.portPopover = null;
   state.connecting = null;
   state.portDrag = {
@@ -1026,6 +1379,8 @@ function startPortDrag(event, node, port) {
   }
   state.selected = new Set([node.id]);
   state.selectedEdge = null;
+  state.selectedPowerEdge = null;
+  state.selectedPowerOutlet = null;
   state.portPopover = null;
   state.connecting = { nodeId: node.id, portId: port.id };
   state.portDrag = {
@@ -1049,12 +1404,16 @@ function handlePortClick(nodeId, portId) {
   }
   state.selected = new Set([nodeId]);
   state.selectedEdge = null;
+  state.selectedPowerEdge = null;
+  state.selectedPowerOutlet = null;
   state.portPopover = { nodeId, portId };
   render();
 }
 
 function startPortConnection(nodeId, portId) {
   state.connecting = { nodeId, portId };
+  state.selectedPowerEdge = null;
+  state.selectedPowerOutlet = null;
   state.portPopover = null;
   render();
   toast("Click the destination gear");
@@ -1088,6 +1447,8 @@ function completeConnection(nodeId, portId) {
   state.connecting = null;
   state.portDrag = null;
   state.selectedEdge = edge.id;
+  state.selectedPowerEdge = null;
+  state.selectedPowerOutlet = null;
   state.selected = new Set();
   state.portPopover = null;
   commit("Connected cable");
@@ -1119,9 +1480,96 @@ function completeNodeConnection(from, to) {
   state.connecting = null;
   state.portDrag = null;
   state.selectedEdge = edge.id;
+  state.selectedPowerEdge = null;
+  state.selectedPowerOutlet = null;
   state.selected = new Set();
   state.portPopover = null;
   commit("Connected cable");
+}
+
+function startPowerConnectorDrag(event, node, side) {
+  event.preventDefault();
+  event.stopPropagation();
+  ensureDefaultPowerOutlet();
+  state.selected = new Set([node.id]);
+  state.selectedEdge = null;
+  state.selectedPowerEdge = null;
+  state.selectedPowerOutlet = null;
+  state.portPopover = null;
+  state.connecting = null;
+  state.powerDrag = {
+    pointerId: event.pointerId,
+    from: { nodeId: node.id, side, offset: 0.5 },
+    startClient: { x: event.clientX, y: event.clientY },
+    current: screenToWorld(event.clientX, event.clientY),
+    target: null,
+    didMove: false,
+  };
+  event.currentTarget.setPointerCapture(event.pointerId);
+  event.currentTarget.classList.add("connecting");
+  renderInspector();
+  renderEdges();
+  renderPowerOutlets();
+}
+
+function completePowerConnection(from, to) {
+  if (!from || !to) {
+    state.powerDrag = null;
+    render();
+    return;
+  }
+  const duplicate = state.powerEdges.find((edge) => edge.from.nodeId === from.nodeId && edge.to.outletId === to.outletId);
+  if (duplicate) {
+    state.selectedPowerEdge = duplicate.id;
+    state.selected = new Set();
+    state.selectedEdge = null;
+    state.powerDrag = null;
+    render();
+    toast("Power cable already exists");
+    return;
+  }
+  const node = getNode(from.nodeId);
+  const outlet = getPowerOutlet(to.outletId);
+  if (!node || !outlet) {
+    state.powerDrag = null;
+    render();
+    return;
+  }
+  const edge = {
+    id: uid("power"),
+    from,
+    to,
+  };
+  state.powerEdges.push(edge);
+  autoPlacePowerEdge(edge);
+  state.powerDrag = null;
+  state.selectedPowerEdge = edge.id;
+  state.selectedPowerOutlet = null;
+  state.selectedEdge = null;
+  state.selected = new Set();
+  commit("Connected power");
+}
+
+function startPowerOutletDrag(event, outlet) {
+  event.preventDefault();
+  event.stopPropagation();
+  state.selectedPowerOutlet = outlet.id;
+  state.selectedPowerEdge = null;
+  state.selectedEdge = null;
+  state.selected = new Set();
+  state.portPopover = null;
+  const point = screenToWorld(event.clientX, event.clientY);
+  state.powerOutletDrag = {
+    pointerId: event.pointerId,
+    outletId: outlet.id,
+    start: point,
+    startClient: { x: event.clientX, y: event.clientY },
+    x: outlet.x,
+    y: outlet.y,
+    didMove: false,
+  };
+  event.currentTarget.setPointerCapture(event.pointerId);
+  render();
 }
 
 function startNodeDrag(event, node) {
@@ -1133,6 +1581,8 @@ function startNodeDrag(event, node) {
     state.selected = new Set([node.id]);
   }
   state.selectedEdge = null;
+  state.selectedPowerEdge = null;
+  state.selectedPowerOutlet = null;
   state.portPopover = null;
   const point = screenToWorld(event.clientX, event.clientY);
   state.drag = {
@@ -1151,6 +1601,8 @@ function startResize(event, node) {
   event.stopPropagation();
   state.selected = new Set([node.id]);
   state.selectedEdge = null;
+  state.selectedPowerEdge = null;
+  state.selectedPowerOutlet = null;
   state.portPopover = null;
   state.resize = {
     pointerId: event.pointerId,
@@ -1164,7 +1616,14 @@ function startResize(event, node) {
 }
 
 function startPan(event) {
-  if (event.target !== dom.canvasFrame && event.target !== dom.world && event.target !== dom.nodeLayer && event.target !== dom.edgeLayer) return;
+  if (
+    event.target !== dom.canvasFrame &&
+    event.target !== dom.world &&
+    event.target !== dom.nodeLayer &&
+    event.target !== dom.powerOutletLayer &&
+    event.target !== dom.edgeLayer
+  )
+    return;
   event.preventDefault();
   clearSelection();
   state.pan = {
@@ -1179,6 +1638,17 @@ function startPan(event) {
 }
 
 function onPointerMove(event) {
+  if (state.powerDrag) {
+    state.powerDrag.current = screenToWorld(event.clientX, event.clientY);
+    state.powerDrag.didMove =
+      state.powerDrag.didMove ||
+      Math.hypot(event.clientX - state.powerDrag.startClient.x, event.clientY - state.powerDrag.startClient.y) > 5;
+    state.powerDrag.target = findPowerOutletTargetAtClientPoint(event.clientX, event.clientY);
+    syncPowerOutletDropTarget();
+    renderEdges();
+    renderPowerOutlets();
+    return;
+  }
   if (state.portDrag) {
     state.portDrag.current = screenToWorld(event.clientX, event.clientY);
     state.portDrag.didMove =
@@ -1201,8 +1671,25 @@ function onPointerMove(event) {
       node.y = position.y;
     });
     autoPlaceConnectedPortsForNodeIds(state.drag.nodes.map((item) => item.id));
+    autoPlacePowerEdgesForNodeIds(state.drag.nodes.map((item) => item.id));
     renderEdges();
     renderNodes();
+    renderPowerOutlets();
+    renderMinimap();
+  }
+  if (state.powerOutletDrag) {
+    const point = screenToWorld(event.clientX, event.clientY);
+    const outlet = getPowerOutlet(state.powerOutletDrag.outletId);
+    if (!outlet) return;
+    state.powerOutletDrag.didMove =
+      state.powerOutletDrag.didMove ||
+      Math.hypot(event.clientX - state.powerOutletDrag.startClient.x, event.clientY - state.powerOutletDrag.startClient.y) > 5;
+    outlet.x = snapToGrid(state.powerOutletDrag.x + point.x - state.powerOutletDrag.start.x);
+    outlet.y = snapToGrid(state.powerOutletDrag.y + point.y - state.powerOutletDrag.start.y);
+    autoPlacePowerEdgesForOutletIds([outlet.id]);
+    renderEdges();
+    renderPowerOutlets();
+    renderInspector();
     renderMinimap();
   }
   if (state.resize) {
@@ -1212,8 +1699,10 @@ function onPointerMove(event) {
     node.w = Math.max(120, Math.round((state.resize.w + point.x - state.resize.start.x) / 10) * 10);
     node.h = Math.max(86, Math.round((state.resize.h + point.y - state.resize.start.y) / 10) * 10);
     autoPlaceConnectedPortsForNodeIds([node.id]);
+    autoPlacePowerEdgesForNodeIds([node.id]);
     renderEdges();
     renderNodes();
+    renderPowerOutlets();
     renderInspector();
     renderMinimap();
   }
@@ -1226,6 +1715,26 @@ function onPointerMove(event) {
 }
 
 function onPointerUp(event) {
+  if (state.powerDrag) {
+    const drag = state.powerDrag;
+    drag.target = event ? findPowerOutletTargetAtClientPoint(event.clientX, event.clientY) : drag.target;
+    const target = drag.target;
+    const didMove = drag.didMove;
+    state.powerDrag = null;
+    syncPowerOutletDropTarget();
+    if (didMove && target) {
+      completePowerConnection(drag.from, target);
+      return;
+    }
+    if (!didMove) {
+      state.selected = new Set([drag.from.nodeId]);
+      render();
+      return;
+    }
+    render();
+    toast("Release on a power outlet to create power cable.");
+    return;
+  }
   if (state.portDrag) {
     const drag = state.portDrag;
     drag.target = event ? findConnectionTargetAtClientPoint(event.clientX, event.clientY, drag.from.nodeId) : drag.target;
@@ -1247,10 +1756,11 @@ function onPointerUp(event) {
     toast("Release on another piece of gear to create a cable.");
     return;
   }
-  if (state.drag || state.resize || state.pan) {
-    const shouldCommit = !!(state.drag || state.resize);
+  if (state.drag || state.resize || state.powerOutletDrag || state.pan) {
+    const shouldCommit = !!(state.drag || state.resize || state.powerOutletDrag?.didMove);
     state.drag = null;
     state.resize = null;
+    state.powerOutletDrag = null;
     state.pan = null;
     dom.canvasFrame.classList.remove("panning");
     if (shouldCommit) commit("Autosaved");
@@ -1285,6 +1795,18 @@ function getPort(node, portId) {
 
 function getSelectedEdge() {
   return state.edges.find((edge) => edge.id === state.selectedEdge);
+}
+
+function getSelectedPowerEdge() {
+  return state.powerEdges.find((edge) => edge.id === state.selectedPowerEdge);
+}
+
+function getPowerOutlet(id) {
+  return state.powerOutlets.find((outlet) => outlet.id === id);
+}
+
+function getSelectedPowerOutlet() {
+  return getPowerOutlet(state.selectedPowerOutlet);
 }
 
 function getOpenPopoverPort() {
@@ -1325,6 +1847,34 @@ function autoPlaceConnectedPortsForNodeIds(nodeIds) {
 function autoPlaceEdgeAnchors(edge) {
   if (!edge) return;
   autoPlaceConnectedPortsForNodeIds([edge.from.nodeId, edge.to.nodeId]);
+}
+
+function autoPlacePowerEdgesForNodeIds(nodeIds = []) {
+  const ids = new Set(nodeIds.filter(Boolean));
+  state.powerEdges.forEach((edge) => {
+    if (ids.size && !ids.has(edge.from.nodeId)) return;
+    autoPlacePowerEdge(edge);
+  });
+}
+
+function autoPlacePowerEdgesForOutletIds(outletIds = []) {
+  const ids = new Set(outletIds.filter(Boolean));
+  state.powerEdges.forEach((edge) => {
+    if (ids.size && !ids.has(edge.to.outletId)) return;
+    autoPlacePowerEdge(edge);
+  });
+}
+
+function autoPlacePowerEdge(edge) {
+  const node = getNode(edge.from.nodeId);
+  const outlet = getPowerOutlet(edge.to.outletId);
+  if (!node || !outlet) return;
+  const fromSide = nearestSide(node, outlet);
+  const toSide = nearestSide(outlet, node);
+  const fromPoint = endpointFromPoint(node, nodeCenter(outlet));
+  const toPoint = endpointFromPoint(outlet, nodeCenter(node));
+  edge.from = { ...edge.from, side: fromSide, offset: fromPoint.offset };
+  edge.to = { ...edge.to, side: toSide, offset: toPoint.offset, outletId: outlet.id };
 }
 
 function connectedNodeIdSet(nodeIds) {
@@ -1474,6 +2024,29 @@ function nodeAnchorPoint(node, ref = {}) {
   return { x: node.x + node.w * offset, y: node.y + node.h };
 }
 
+function boxAnchorPoint(box, ref = {}) {
+  const side = ref.side || "left";
+  const offset = Number.isFinite(Number(ref.offset)) ? Number(ref.offset) : 0.5;
+  if (side === "left") return { x: box.x, y: box.y + box.h * offset };
+  if (side === "right") return { x: box.x + box.w, y: box.y + box.h * offset };
+  if (side === "top") return { x: box.x + box.w * offset, y: box.y };
+  return { x: box.x + box.w * offset, y: box.y + box.h };
+}
+
+function powerEdgeEndpointPoints(edge) {
+  const node = getNode(edge?.from?.nodeId);
+  const outlet = getPowerOutlet(edge?.to?.outletId);
+  if (!node || !outlet) return null;
+  const fromSide = edge.from.side || nearestSide(node, outlet);
+  const toSide = edge.to.side || nearestSide(outlet, node);
+  return {
+    from: nodeAnchorPoint(node, { ...edge.from, side: fromSide }),
+    to: boxAnchorPoint(outlet, { ...edge.to, side: toSide }),
+    fromSide,
+    toSide,
+  };
+}
+
 function edgeEndpointPoints(edge) {
   const fromNode = getNode(edge?.from?.nodeId);
   const toNode = getNode(edge?.to?.nodeId);
@@ -1538,15 +2111,16 @@ function cablePathSvgElements(d, style, selected = false) {
   return [path];
 }
 
-function cablePathMarkup(d, style) {
+function cablePathMarkup(d, style, opacity = 1) {
   const linecap = `stroke-linecap="round" stroke-linejoin="round"`;
+  const opacityAttr = opacity < 1 ? ` opacity="${opacity}"` : "";
   if (style.double) {
     const railWidth = Math.max(style.width + 5, 7);
     const gapWidth = Math.max(style.width + 1.2, 3.2);
-    return `<path d="${d}" fill="none" stroke="${style.color}" stroke-width="${railWidth}" ${linecap}/><path d="${d}" fill="none" stroke="#ffffff" stroke-width="${gapWidth}" ${linecap}/>`;
+    return `<path d="${d}" fill="none" stroke="${style.color}" stroke-width="${railWidth}" ${linecap}${opacityAttr}/><path d="${d}" fill="none" stroke="#ffffff" stroke-width="${gapWidth}" ${linecap}${opacityAttr}/>`;
   }
   const dash = style.dash ? ` stroke-dasharray="${style.dash}"` : "";
-  return `<path d="${d}" fill="none" stroke="${style.color}" stroke-width="${style.width}" ${linecap}${dash}/>`;
+  return `<path d="${d}" fill="none" stroke="${style.color}" stroke-width="${style.width}" ${linecap}${dash}${opacityAttr}/>`;
 }
 
 function cableDirectionSvgElements(controls, edge, color, selected = false) {
@@ -1623,6 +2197,32 @@ function renderPortDragPreview() {
   dom.edgeLayer.append(preview, cursor);
 }
 
+function renderPowerDragPreview() {
+  const drag = state.powerDrag;
+  if (!drag) return;
+  const fromNode = getNode(drag.from.nodeId);
+  if (!fromNode) return;
+  const targetOutlet = drag.target ? getPowerOutlet(drag.target.outletId) : null;
+  const from = nodeAnchorPoint(fromNode, drag.from);
+  const to = targetOutlet && drag.target ? boxAnchorPoint(targetOutlet, drag.target) : drag.current;
+  const fromSide = drag.from.side || "right";
+  const toSide = targetOutlet && drag.target ? drag.target.side || "left" : sideTowardPoint(to, from);
+  const preview = svgEl("path", {
+    d: cablePath(from, to, fromSide, toSide),
+    class: "power-cable preview",
+    stroke: "#111111",
+    "stroke-width": 2.6,
+    "stroke-dasharray": "9 6",
+  });
+  const cursor = svgEl("circle", {
+    cx: to.x,
+    cy: to.y,
+    r: targetOutlet ? 7 : 5,
+    class: `patch-cable-cursor ${targetOutlet ? "locked" : ""}`,
+  });
+  dom.edgeLayer.append(preview, cursor);
+}
+
 function connectorTerminalSvg(point, kind, color, selected = false, gender = "") {
   const group = svgEl("g", {
     class: `cable-terminal ${selected ? "selected" : ""}`,
@@ -1675,6 +2275,52 @@ function cableEndChipSvg(point, edge, endpoint, color, selected = false, otherPo
   return group;
 }
 
+function powerEndChipSvg(point, edge, endpoint, selected = false) {
+  const side = endpoint === "from" ? edge.from.side || "right" : edge.to.side || "left";
+  const label = powerEdgeLoadLabel(edge);
+  const width = Math.max(54, Math.min(86, label.length * 7 + 24));
+  const height = 24;
+  const x = side === "left" ? point.x - width + 8 : side === "right" ? point.x - 8 : point.x - width / 2;
+  const y = side === "top" ? point.y - height + 8 : side === "bottom" ? point.y - 8 : point.y - height / 2;
+  const group = svgEl("g", {
+    class: `power-end-chip ${selected ? "selected" : ""}`,
+    transform: `translate(${x} ${y})`,
+  });
+  const rect = svgEl("rect", { class: "power-end-chip-bg", width, height, rx: 12 });
+  const text = svgEl(
+    "text",
+    {
+      class: "power-end-chip-label",
+      x: width / 2,
+      y: height / 2 + 0.5,
+      "text-anchor": "middle",
+      "dominant-baseline": "middle",
+    },
+    label,
+  );
+  group.append(rect, text);
+  return group;
+}
+
+function powerEndChipLayout(point, edge, endpoint) {
+  const side = endpoint === "from" ? edge.from.side || "right" : edge.to.side || "left";
+  const label = powerEdgeLoadLabel(edge);
+  const width = Math.max(54, Math.min(86, label.length * 7 + 24));
+  const height = 24;
+  const x = side === "left" ? point.x - width + 8 : side === "right" ? point.x - 8 : point.x - width / 2;
+  const y = side === "top" ? point.y - height + 8 : side === "bottom" ? point.y - 8 : point.y - height / 2;
+  return { x, y, width, height, label };
+}
+
+function powerEndChipMarkup(point, edge, endpoint) {
+  const layout = powerEndChipLayout(point, edge, endpoint);
+  return `
+    <g transform="translate(${layout.x} ${layout.y})">
+      <rect width="${layout.width}" height="${layout.height}" rx="12" fill="#fff" stroke="#c8c8c8" stroke-width="1"/>
+      <text x="${layout.width / 2}" y="${layout.height / 2 + 0.5}" text-anchor="middle" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820">${escapeHtml(layout.label)}</text>
+    </g>`;
+}
+
 function cableEndChipMarkup(point, edge, endpoint, otherPoint = null) {
   const label = edgeEndpointPortLabel(edge, endpoint);
   const connector = connectorInfoLabel(edgeEndpointKind(edge, endpoint), edgeEndpointGender(edge, endpoint));
@@ -1691,7 +2337,7 @@ function cableEndChipMarkup(point, edge, endpoint, otherPoint = null) {
       <rect y="${layout.bodyY || 0}" width="${layout.width}" height="${layout.height}" rx="14" fill="#fff" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
       <circle cx="${layout.iconX}" cy="${layout.iconY}" r="8" fill="#fff" stroke="#111" stroke-width="1.5"/>
       <text x="${layout.textX}" y="${layout.textY + (layout.bodyY || 0)}" text-anchor="${layout.textAnchor}" dominant-baseline="middle" fill="#111" font-size="10.5" font-weight="820"${labelTransformMarkup}${fitMarkup}>${escapeHtml(label)}</text>
-      <text x="${layout.connectorX}" y="${layout.connectorY + (layout.bodyY || 0)}" text-anchor="${layout.connectorAnchor}" dominant-baseline="middle" fill="#6e6e72" font-size="12.5" font-weight="760"${connectorTransformMarkup}${connectorFitMarkup}>${escapeHtml(connector)}</text>
+      <text x="${layout.connectorX}" y="${layout.connectorY + (layout.bodyY || 0)}" text-anchor="${layout.connectorAnchor}" dominant-baseline="middle" fill="#6e6e72" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke" font-size="12.5" font-weight="760"${connectorTransformMarkup}${connectorFitMarkup}>${escapeHtml(connector)}</text>
     </g>`;
 }
 
@@ -1978,6 +2624,8 @@ function selectNearestEdgeAt(clientX, clientY) {
   const nearest = nearestEdgeToPoint(point);
   if (!nearest || nearest.distance > 24 / state.viewport.scale) return false;
   state.selectedEdge = nearest.edge.id;
+  state.selectedPowerEdge = null;
+  state.selectedPowerOutlet = null;
   state.selected = new Set();
   state.portPopover = null;
   render();
@@ -2028,6 +2676,41 @@ function findConnectionTargetAtClientPoint(clientX, clientY, sourceNodeId) {
   const endpoint = endpointFromPoint(node, point);
   endpoint.kind = "xlr-f";
   return endpoint;
+}
+
+function findPowerOutletTargetAtClientPoint(clientX, clientY) {
+  const point = screenToWorld(clientX, clientY);
+  let nearest = null;
+  $$(".power-outlet").forEach((outletEl) => {
+    const outletId = outletEl.dataset.outletId;
+    const rect = outletEl.getBoundingClientRect();
+    const inside =
+      clientX >= rect.left - 18 &&
+      clientX <= rect.right + 18 &&
+      clientY >= rect.top - 18 &&
+      clientY <= rect.bottom + 18;
+    const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    const distance = Math.hypot(clientX - center.x, clientY - center.y);
+    const score = inside ? distance * 0.2 : distance;
+    if (!nearest || score < nearest.score) nearest = { outletId, inside, distance, score };
+  });
+  if (!nearest || (!nearest.inside && nearest.distance > 84)) return null;
+  const outlet = getPowerOutlet(nearest.outletId);
+  if (!outlet) return null;
+  const endpoint = endpointFromPoint(outlet, point);
+  return {
+    outletId: outlet.id,
+    side: endpoint.side,
+    offset: endpoint.offset,
+  };
+}
+
+function syncPowerOutletDropTarget() {
+  $$(".power-outlet.drop-target").forEach((outletEl) => outletEl.classList.remove("drop-target"));
+  const target = state.powerDrag?.target;
+  if (!target) return;
+  const outletEl = $$(".power-outlet").find((item) => item.dataset.outletId === target.outletId);
+  outletEl?.classList.add("drop-target");
 }
 
 function syncNodeDropTarget() {
@@ -2081,18 +2764,45 @@ function filename(ext, suffix = "") {
   return `${FILE_PREFIX}_${safe}${suffixPart}_${date}.${ext}`;
 }
 
+function exportSourceUrl() {
+  return window.location?.href || "https://gearpatch.datafruits.fm/";
+}
+
+function truncateMiddleText(value, length = 96) {
+  const text = String(value || "");
+  if (text.length <= length) return text;
+  const head = Math.ceil((length - 3) * 0.62);
+  const tail = Math.max(8, length - 3 - head);
+  return `${text.slice(0, head)}...${text.slice(-tail)}`;
+}
+
+function exportFooterMarkup(x, y, width, height, options = {}) {
+  const fontSize = options.fontSize || 9;
+  const label = options.label || exportSourceUrl();
+  const maxChars = Math.max(48, Math.floor(width / (fontSize * 0.62)));
+  return `<text x="${x + width - 10}" y="${y + height - 10}" font-size="${fontSize}" fill="#777" text-anchor="end">${escapeHtml(truncateMiddleText(label, maxChars))}</text>`;
+}
+
 function downloadText(text, ext, type, suffix = "") {
   const blob = new Blob([text], { type });
   downloadBlob(blob, ext, suffix);
 }
 
 function downloadBlob(blob, ext, suffix = "") {
+  const fileName = filename(ext, suffix);
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = filename(ext, suffix);
+  link.download = fileName;
+  link.rel = "noopener";
+  link.style.display = "none";
+  document.body.appendChild(link);
   link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1200);
+  toastDownloadLink(url, fileName);
+  setTimeout(() => {
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, 60000);
 }
 
 function downloadJson() {
@@ -2101,8 +2811,25 @@ function downloadJson() {
   toast("JSON saved");
 }
 
+async function buildExportSvgAsync(options = {}) {
+  await ensureExportIconData();
+  return buildExportSvg(options);
+}
+
+async function buildExportSvgForLayerAsync(layer, options = {}) {
+  await ensureExportIconData();
+  const previousLayer = state.activeLayer;
+  state.activeLayer = layer === "power" ? "power" : "signal";
+  try {
+    return buildExportSvg(options);
+  } finally {
+    state.activeLayer = previousLayer;
+  }
+}
+
 function buildExportSvg(options = {}) {
   const includeNodes = options.includeNodes !== false;
+  const isPowerLayer = state.activeLayer === "power";
   const bounds = contentBounds();
   const pad = options.pad ?? 80;
   const x = bounds.x - pad;
@@ -2116,26 +2843,72 @@ function buildExportSvg(options = {}) {
       const style = cableVisualStyle(edge);
       const controls = cableControlPoints(endpoints.from, endpoints.to, endpoints.fromSide, endpoints.toSide);
       const path = cablePath(endpoints.from, endpoints.to, endpoints.fromSide, endpoints.toSide);
+      if (isPowerLayer) return cablePathMarkup(path, { ...style, color: "#111111", width: Math.max(1.2, style.width), dash: style.dash, double: false }, 0.07);
       return `${cablePathMarkup(path, style)}${cableDirectionMarkup(controls, edge, style.color)}`;
     })
     .join("");
   const terminalMarkup = state.edges
     .map((edge) => {
       const endpoints = edgeEndpointPoints(edge);
-      if (!endpoints) return "";
+      if (!endpoints || isPowerLayer) return "";
       return `${cableEndChipMarkup(endpoints.from, edge, "from", endpoints.to)}${cableEndChipMarkup(endpoints.to, edge, "to", endpoints.from)}`;
     })
     .join("");
+  const powerEdgeMarkup = isPowerLayer
+    ? state.powerEdges
+        .map((edge) => {
+          const endpoints = powerEdgeEndpointPoints(edge);
+          if (!endpoints) return "";
+          const path = cablePath(endpoints.from, endpoints.to, endpoints.fromSide, endpoints.toSide);
+          return `<path d="${path}" fill="none" stroke="#111111" stroke-width="2.6" stroke-dasharray="9 6" stroke-linecap="round" stroke-linejoin="round"/>`;
+        })
+        .join("")
+    : "";
+  const powerTerminalMarkup = isPowerLayer
+    ? state.powerEdges
+        .map((edge) => {
+          const endpoints = powerEdgeEndpointPoints(edge);
+          if (!endpoints) return "";
+          return powerEndChipMarkup(endpoints.from, edge, "from");
+        })
+        .join("")
+    : "";
   const nodeMarkup = state.nodes
     .map((node) => {
+      const iconSize = 30;
+      const iconBoxSize = 34;
+      const iconBoxX = node.x + 12;
+      const iconBoxY = node.y + 14;
+      const iconX = iconBoxX + (iconBoxSize - iconSize) / 2;
+      const iconY = iconBoxY + (iconBoxSize - iconSize) / 2;
+      const textX = node.x + 58;
+      const displayTitle = gearDisplayName(node);
+      const displaySubtitle = node.title?.trim() ? node.subtitle : "";
       return `
         <g>
           <rect x="${node.x}" y="${node.y}" width="${node.w}" height="${node.h}" rx="8" fill="#f8f8f5" stroke="#111" stroke-width="1.4"/>
-          <text x="${node.x + 14}" y="${node.y + 28}" font-size="14" font-weight="800">${escapeHtml(node.title)}</text>
-          <text x="${node.x + 14}" y="${node.y + 46}" font-size="10" fill="#666">${escapeHtml(node.subtitle)}</text>
+          <rect x="${iconBoxX}" y="${iconBoxY}" width="${iconBoxSize}" height="${iconBoxSize}" rx="7" fill="#ffffff" fill-opacity="0.62" stroke="#000000" stroke-opacity="0.18" stroke-width="1"/>
+          ${exportIconSvg(node.icon, iconX, iconY, iconSize)}
+          <text x="${textX}" y="${node.y + 30}" font-size="14" font-weight="800">${escapeHtml(displayTitle)}</text>
+          ${displaySubtitle ? `<text x="${textX}" y="${node.y + 48}" font-size="10" fill="#666">${escapeHtml(displaySubtitle)}</text>` : ""}
+          ${isPowerLayer ? `<text x="${node.x + node.w - 12}" y="${node.y + node.h - 12}" text-anchor="end" font-size="10" font-weight="760" fill="#666">${escapeHtml(formatWatts(nodePowerWatts(node)))}</text>` : ""}
         </g>`;
     })
     .join("");
+  const powerOutletMarkup = isPowerLayer
+    ? state.powerOutlets
+        .map(
+          (outlet) => `
+        <g>
+          <rect x="${outlet.x}" y="${outlet.y}" width="${outlet.w}" height="${outlet.h}" rx="8" fill="#f8f8f5" stroke="#111" stroke-width="1.4"/>
+          <rect x="${outlet.x + 12}" y="${outlet.y + 18}" width="28" height="28" rx="7" fill="#ffffff" fill-opacity="0.62" stroke="#000000" stroke-opacity="0.18" stroke-width="1"/>
+          <path d="M${outlet.x + 22} ${outlet.y + 24}v-7M${outlet.x + 32} ${outlet.y + 24}v-7M${outlet.x + 18} ${outlet.y + 30}h18M${outlet.x + 22} ${outlet.y + 30}v4a5 5 0 0 0 10 0v-4M${outlet.x + 27} ${outlet.y + 39}v5" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="${outlet.x + 52}" y="${outlet.y + 34}" font-size="14" font-weight="800">${escapeHtml(outlet.name || "AC Outlet")}</text>
+          <text x="${outlet.x + 52}" y="${outlet.y + 52}" font-size="10" fill="#666">${escapeHtml(powerOutletTotalLabel(outlet))}</text>
+        </g>`,
+        )
+        .join("")
+    : "";
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}">
       <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#ffffff"/>
@@ -2146,51 +2919,83 @@ function buildExportSvg(options = {}) {
       </defs>
       <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#grid)"/>
       ${edgePathMarkup}
+      ${powerEdgeMarkup}
       ${includeNodes ? nodeMarkup : ""}
+      ${includeNodes ? powerOutletMarkup : ""}
       ${terminalMarkup}
+      ${powerTerminalMarkup}
+      ${exportPageTitleMarkup(x, y, options)}
+      ${exportFooterMarkup(x, y, w, h)}
     </svg>
   `.trim();
 }
 
+function exportPageTitleMarkup(x, y, options = {}) {
+  if (!options.pageTitle) return "";
+  const title = String(options.pageTitle);
+  const subtitle = state.name ? ` · ${state.name}` : "";
+  return `
+    <text x="${x + 14}" y="${y + 30}" font-size="18" font-weight="900" fill="#111">${escapeHtml(title)}</text>
+    <text x="${x + 14 + title.length * 11}" y="${y + 30}" font-size="12" font-weight="700" fill="#666">${escapeHtml(subtitle)}</text>
+  `;
+}
+
 function contentBounds() {
-  if (!state.nodes.length) return { x: 0, y: 0, w: 1200, h: 800 };
-  const minX = Math.min(...state.nodes.map((node) => node.x));
-  const minY = Math.min(...state.nodes.map((node) => node.y));
-  const maxX = Math.max(...state.nodes.map((node) => node.x + node.w));
-  const maxY = Math.max(...state.nodes.map((node) => node.y + node.h));
+  const boxes = [...state.nodes, ...(state.activeLayer === "power" ? state.powerOutlets : [])];
+  if (!boxes.length) return { x: 0, y: 0, w: 1200, h: 800 };
+  const minX = Math.min(...boxes.map((node) => node.x));
+  const minY = Math.min(...boxes.map((node) => node.y));
+  const maxX = Math.max(...boxes.map((node) => node.x + node.w));
+  const maxY = Math.max(...boxes.map((node) => node.y + node.h));
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
 
-function downloadSvg() {
-  downloadText(buildExportSvg(), "svg", "image/svg+xml");
-  toast("SVG exported");
+async function downloadSvg() {
+  try {
+    downloadText(await buildExportSvgForLayerAsync("signal"), "svg", "image/svg+xml", "signal");
+    downloadText(await buildExportSvgForLayerAsync("power"), "svg", "image/svg+xml", "power");
+    toast("SVG exported: Signal + Power");
+  } catch (error) {
+    console.error(error);
+    toast("Could not export SVG");
+  }
+}
+
+async function pngBlobFromSvg(svg) {
+  let svgUrl = "";
+  try {
+    const image = new Image();
+    svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+    image.src = svgUrl;
+    await image.decode();
+    const ratio = 2.5;
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width * ratio;
+    canvas.height = image.height * ratio;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.scale(ratio, ratio);
+    ctx.drawImage(image, 0, 0);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) throw new Error("Could not render PNG");
+    return blob;
+  } finally {
+    if (svgUrl) URL.revokeObjectURL(svgUrl);
+  }
 }
 
 async function downloadPng() {
-  const svg = buildExportSvg();
-  const image = new Image();
-  const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
-  image.src = svgUrl;
-  await image.decode();
-  const ratio = 2.5;
-  const canvas = document.createElement("canvas");
-  canvas.width = image.width * ratio;
-  canvas.height = image.height * ratio;
-  const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.scale(ratio, ratio);
-  ctx.drawImage(image, 0, 0);
-  URL.revokeObjectURL(svgUrl);
-  canvas.toBlob((blob) => {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename("png");
-    link.click();
-    URL.revokeObjectURL(url);
-    toast("PNG exported");
-  }, "image/png");
+  try {
+    const signalSvg = await buildExportSvgForLayerAsync("signal");
+    const powerSvg = await buildExportSvgForLayerAsync("power");
+    downloadBlob(await pngBlobFromSvg(signalSvg), "png", "signal");
+    downloadBlob(await pngBlobFromSvg(powerSvg), "png", "power");
+    toast("PNG exported: Signal + Power");
+  } catch (error) {
+    console.error(error);
+    toast("Could not export PNG");
+  }
 }
 
 function truncateText(value, length = 52) {
@@ -2238,6 +3043,7 @@ function buildInputListSvg(rows) {
       ${columns.map((col) => `<text x="${col.x + 14}" y="${tableY + 33}" font-size="19" font-weight="800" fill="#fff">${escapeHtml(col.label)}</text>`).join("")}
       ${columns.slice(1).map((col) => `<path d="M${col.x} ${tableY}v${46 + Math.max(1, rows.length) * rowH}" stroke="#111" stroke-width="1"/>`).join("")}
       ${bodyRows}
+      ${exportFooterMarkup(0, 0, width, height, { fontSize: 14 })}
     </svg>
   `.trim();
 }
@@ -2342,11 +3148,12 @@ async function svgToJpegImage(svg, maxSide = 3600) {
 async function downloadPdf() {
   try {
     const rows = makeInputRows();
-    const diagramImage = await svgToJpegImage(buildExportSvg({ pad: 24 }), 3800);
+    const signalImage = await svgToJpegImage(await buildExportSvgForLayerAsync("signal", { pad: 56, pageTitle: "Signal" }), 3800);
+    const powerImage = await svgToJpegImage(await buildExportSvgForLayerAsync("power", { pad: 56, pageTitle: "Power" }), 3800);
     const inputListImage = await svgToJpegImage(buildInputListSvg(rows), 2800);
-    const pdf = buildPdfFromImages([diagramImage, inputListImage]);
+    const pdf = buildPdfFromImages([signalImage, powerImage, inputListImage]);
     downloadBlob(pdf, "pdf");
-    toast("PDF downloaded");
+    toast("PDF downloaded: Signal + Power");
   } catch (error) {
     console.error(error);
     toast("Could not generate PDF");
@@ -2378,10 +3185,15 @@ function clearAll() {
   if (!confirm("Delete all gear and cables?")) return;
   state.nodes = [];
   state.edges = [];
+  state.powerOutlets = [];
+  state.powerEdges = [];
   state.selected = new Set();
   state.selectedEdge = null;
+  state.selectedPowerEdge = null;
+  state.selectedPowerOutlet = null;
   state.connecting = null;
   state.portDrag = null;
+  state.powerDrag = null;
   state.portPopover = null;
   commit("Cleared canvas");
   toast("Canvas cleared");
@@ -2405,6 +3217,21 @@ function redo() {
 
 function deleteSelected() {
   const ids = new Set(state.selected);
+  if (!ids.size && state.selectedPowerEdge) {
+    state.powerEdges = state.powerEdges.filter((edge) => edge.id !== state.selectedPowerEdge);
+    state.selectedPowerEdge = null;
+    state.powerDrag = null;
+    commit("Deleted power cable");
+    return;
+  }
+  if (!ids.size && state.selectedPowerOutlet) {
+    state.powerOutlets = state.powerOutlets.filter((outlet) => outlet.id !== state.selectedPowerOutlet);
+    state.powerEdges = state.powerEdges.filter((edge) => edge.to.outletId !== state.selectedPowerOutlet);
+    state.selectedPowerOutlet = null;
+    state.powerDrag = null;
+    commit("Deleted power outlet");
+    return;
+  }
   if (!ids.size && state.selectedEdge) {
     state.edges = state.edges.filter((edge) => edge.id !== state.selectedEdge);
     state.selectedEdge = null;
@@ -2416,9 +3243,11 @@ function deleteSelected() {
   }
   state.nodes = state.nodes.filter((node) => !ids.has(node.id));
   state.edges = state.edges.filter((edge) => !ids.has(edge.from.nodeId) && !ids.has(edge.to.nodeId));
+  state.powerEdges = state.powerEdges.filter((edge) => !ids.has(edge.from.nodeId));
   state.selected = new Set();
   state.connecting = null;
   state.portDrag = null;
+  state.powerDrag = null;
   state.portPopover = null;
   commit("Deleted selection");
 }
@@ -2593,14 +3422,19 @@ function showAboutDialog() {
 
 function autoPlaceAllEdges() {
   closeMenus();
-  autoPlacePortsForEdges();
+  if (state.activeLayer === "power") {
+    autoPlacePowerEdgesForNodeIds(state.nodes.map((node) => node.id));
+  } else {
+    autoPlacePortsForEdges();
+  }
   renderEdges();
   renderNodes();
+  renderPowerOutlets();
   renderInputList();
   renderInspector();
   renderMinimap();
   scheduleAutosave("Autosaved");
-  toast("Cable endpoints auto-placed");
+  toast(state.activeLayer === "power" ? "Power endpoints auto-placed" : "Cable endpoints auto-placed");
 }
 
 function showStartDialog() {
@@ -2635,6 +3469,9 @@ function startBlankFlow() {
   state.notes = "";
   state.nodes = [];
   state.edges = [];
+  state.powerOutlets = [];
+  state.powerEdges = [];
+  state.activeLayer = "signal";
   resetTransientState();
   resetViewportToFieldCenter(1);
   closeStartDialog();
@@ -2670,6 +3507,21 @@ function toast(message) {
   el.textContent = message;
   dom.toastStack.appendChild(el);
   setTimeout(() => el.remove(), 3200);
+}
+
+function toastDownloadLink(url, fileName) {
+  const el = document.createElement("div");
+  el.className = "toast download-toast";
+  const label = document.createElement("span");
+  label.textContent = "Download ready";
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.rel = "noopener";
+  link.textContent = fileName;
+  el.append(label, link);
+  dom.toastStack.appendChild(el);
+  setTimeout(() => el.remove(), 20000);
 }
 
 function templateNode(type, dx, dy, overrides = {}) {
@@ -2768,6 +3620,9 @@ function applyTemplate(kind) {
   pushHistory();
   if (kind === "dj") seedDjTemplate();
   else seedBandTemplate();
+  state.powerOutlets = [];
+  state.powerEdges = [];
+  state.activeLayer = "signal";
   resetTransientState();
   resetViewportToFieldCenter(1);
   closeStartDialog();
@@ -2787,6 +3642,11 @@ function bindEvents() {
   });
   dom.edgeLayer.addEventListener("click", (event) => {
     if (event.target.classList.contains("patch-cable-hit")) return;
+    if (event.target.classList.contains("power-cable-hit")) return;
+    if (state.activeLayer === "power") {
+      clearSelection();
+      return;
+    }
     if (!selectNearestEdgeAt(event.clientX, event.clientY)) clearSelection();
   });
   window.addEventListener("pointermove", onPointerMove);
@@ -2829,6 +3689,8 @@ function bindEvents() {
   $("#redoBtn").addEventListener("click", redo);
   $("#alignVerticalCenterBtn").addEventListener("click", () => alignSelectedCenter("y"));
   $("#alignHorizontalCenterBtn").addEventListener("click", () => alignSelectedCenter("x"));
+  dom.signalLayerBtn.addEventListener("click", () => setActiveLayer("signal"));
+  dom.powerLayerBtn.addEventListener("click", () => setActiveLayer("power"));
   $$("[data-menu-button]").forEach((button) => {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -2859,6 +3721,10 @@ function bindEvents() {
   $("#documentMenuItem").addEventListener("click", showDocumentDialog);
   $("#inputListMenuItem").addEventListener("click", showInputListDialog);
   $("#autoPlaceMenuItem").addEventListener("click", autoPlaceAllEdges);
+  $("#powerOutletMenuItem").addEventListener("click", () => {
+    closeMenus();
+    addPowerOutlet();
+  });
   $("#historyMenuItem").addEventListener("click", showHistory);
   $("#closeHistoryBtn").addEventListener("click", () => dom.historyDialog.close());
   $("#closeDocumentBtn").addEventListener("click", () => dom.documentDialog.close());
@@ -2898,6 +3764,9 @@ function bindEvents() {
   dom.edgeInspector.addEventListener("input", handleEdgeInspectorInput);
   dom.edgeInspector.addEventListener("change", handleEdgeInspectorChange);
   dom.edgeInspector.addEventListener("click", handleEdgeInspectorClick);
+  $("#addPowerOutletBtn").addEventListener("click", () => addPowerOutlet());
+  dom.powerOutletNameInput.addEventListener("input", updateSelectedPowerOutletFromInspector);
+  dom.powerOutletLimitInput.addEventListener("input", updateSelectedPowerOutletFromInspector);
   dom.edgeColorSwatches.addEventListener("click", (event) => {
     const button = event.target.closest("[data-edge-color]");
     const edge = getSelectedEdge();
@@ -2958,7 +3827,10 @@ function bindEvents() {
       setMobilePanel("canvas");
       state.connecting = null;
       state.portDrag = null;
+      state.powerDrag = null;
       state.selectedEdge = null;
+      state.selectedPowerEdge = null;
+      state.selectedPowerOutlet = null;
       state.portPopover = null;
       render();
     }
@@ -2982,8 +3854,10 @@ function updateSelectedNodeFromInspector() {
   if (!node) return;
   node.title = dom.nodeTitleInput.value;
   node.subtitle = dom.nodeSubtitleInput.value;
+  if (state.activeLayer === "power") node.powerWatts = dom.nodePowerInput.value;
   renderEdges();
   renderNodes();
+  renderPowerOutlets();
   renderInputList();
   renderMinimap();
   scheduleAutosave("Autosaved");
@@ -2996,6 +3870,17 @@ function updateSelectedEdgeFromInspector() {
   edge.color = dom.edgeColorInput.value || style.color;
   edge.width = Number(dom.edgeWidthInput.value) || style.width;
   renderEdges();
+  scheduleAutosave("Autosaved");
+}
+
+function updateSelectedPowerOutletFromInspector() {
+  const outlet = getSelectedPowerOutlet() || getPowerOutlet(getSelectedPowerEdge()?.to?.outletId);
+  if (!outlet) return;
+  outlet.name = dom.powerOutletNameInput.value;
+  outlet.limitWatts = dom.powerOutletLimitInput.value;
+  renderEdges();
+  renderPowerOutlets();
+  renderInspector();
   scheduleAutosave("Autosaved");
 }
 
@@ -3215,6 +4100,7 @@ function loadInitial() {
   dom.saveStatus.textContent = "New flow";
 }
 
+ensureExportIconData();
 bindEvents();
 loadInitial();
 updateStorageMeter();

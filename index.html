@@ -50,7 +50,7 @@
       content="Create stage-ready signal flow diagrams for live sound, DJ rigs, studios, and venue handoffs."
     />
     <meta name="twitter:image" content="https://gearpatch.datafruits.fm/assets/og-gearpatch.png" />
-    <link rel="stylesheet" href="./styles.css?v=20260523e" />
+    <link rel="stylesheet" href="./styles.css?v=20260530b" />
     <script
       async
       src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5475971647967700"
@@ -114,6 +114,36 @@
               <path d="M6 11a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2l0 -2" />
             </svg>
           </button>
+          <span class="toolbar-divider" aria-hidden="true"></span>
+          <div class="layer-switch" aria-label="Diagram layer">
+            <button type="button" id="signalLayerBtn" class="active">
+              <svg class="tabler-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+                <path d="M4 7h5a4 4 0 0 1 4 4v2a4 4 0 0 0 4 4h3" />
+                <path d="M17 14l3 3l-3 3" />
+              </svg>
+              <span>Signal</span>
+            </button>
+            <div class="menu-wrap layer-menu-wrap">
+              <button type="button" id="powerLayerBtn" data-menu-button aria-haspopup="true" aria-expanded="false">
+                <svg class="tabler-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+                  <path d="M13 3l-8 11h7l-1 7l8 -11h-7l1 -7" />
+                </svg>
+                <span>Power</span>
+              </button>
+              <div class="app-menu glass-panel hidden" data-menu role="menu">
+                <button role="menuitem" id="powerOutletMenuItem">
+                  <svg class="tabler-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+                    <path d="M7 7v-4" />
+                    <path d="M17 7v-4" />
+                    <path d="M5 11h14" />
+                    <path d="M8 11v3a4 4 0 0 0 8 0v-3" />
+                    <path d="M12 18v3" />
+                  </svg>
+                  <span>Add Power Outlet</span>
+                </button>
+              </div>
+            </div>
+          </div>
           <span class="toolbar-divider" aria-hidden="true"></span>
           <div class="menu-wrap">
             <button class="text-button" data-menu-button aria-haspopup="true" aria-expanded="false">
@@ -281,6 +311,7 @@
           <div class="world" id="world">
             <svg id="edgeLayer" class="edge-layer" width="5000" height="3500" viewBox="0 0 5000 3500"></svg>
             <div id="nodeLayer" class="node-layer"></div>
+            <div id="powerOutletLayer" class="power-outlet-layer"></div>
             <svg id="terminalLayer" class="terminal-layer" width="5000" height="3500" viewBox="0 0 5000 3500"></svg>
           </div>
         </div>
@@ -315,6 +346,10 @@
               Label
               <input id="nodeSubtitleInput" type="text" />
             </label>
+            <label id="nodePowerField" class="hidden">
+              Power consumption (W)
+              <input id="nodePowerInput" type="number" min="0" step="1" inputmode="numeric" placeholder="0" />
+            </label>
             <div>
               <span class="field-label">Icon</span>
               <div class="icon-picker" id="nodeIconPicker" aria-label="Gear icons"></div>
@@ -342,6 +377,19 @@
               <input id="edgeWidthInput" type="range" min="1" max="8" step="1" value="3" />
             </label>
             <button class="full-button" id="autoPlaceEdgeBtn">Auto-place endpoints</button>
+          </div>
+
+          <div id="powerInspector" class="inspector hidden">
+            <div class="edge-summary" id="powerSummary"></div>
+            <label id="powerOutletNameField">
+              Outlet name
+              <input id="powerOutletNameInput" type="text" />
+            </label>
+            <label id="powerOutletLimitField">
+              Outlet limit (W)
+              <input id="powerOutletLimitInput" type="number" min="0" step="50" inputmode="numeric" placeholder="1500" />
+            </label>
+            <button class="full-button" id="addPowerOutletBtn">Add power outlet</button>
           </div>
         </section>
       </aside>
@@ -494,7 +542,7 @@
       </div>
     </section>
 
-    <script src="./gear-icons.js?v=20260523b"></script>
-    <script src="./app.js?v=20260523d"></script>
+    <script src="./gear-icons.js?v=20260530a"></script>
+    <script src="./app.js?v=20260530e"></script>
   </body>
 </html>
